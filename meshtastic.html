@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meshtastic Network | CC Mesh</title>
+    <link rel="stylesheet" href="./includes/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+        integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            if (window.innerWidth <= 768) {
+                const dropdownToggles = document.querySelectorAll('.dropdown-toggle');
+
+                dropdownToggles.forEach(toggle => {
+                    toggle.addEventListener('click', (e) => {
+                        // Block direct redirect link if mobile sub-menu drawer is collapsed
+                        e.preventDefault();
+                        const parentLi = toggle.closest('.dropdown');
+
+                        // Toggle active tracking layouts
+                        parentLi.classList.toggle('active');
+                        const targetMenu = parentLi.querySelector('.dropdown-menu');
+
+                        if (targetMenu.style.display === 'block') {
+                            targetMenu.style.display = 'none';
+                        } else {
+                            targetMenu.style.display = 'block';
+                        }
+                    });
+                });
+            }
+
+            // --- 1. Clean Scroll Reveal Effect ---
+            const observerOptions = { root: null, rootMargin: "0px", threshold: 0.1 };
+            const revealObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.opacity = "1";
+                        entry.target.style.transform = "translateY(0)";
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, observerOptions);
+
+            const animatedElements = document.querySelectorAll(".card, .map-placeholder, .hero-content h1, .hero-content p");
+            animatedElements.forEach(el => {
+                el.style.opacity = "0";
+                el.style.transform = "translateY(20px)";
+                el.style.transition = "opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)";
+                revealObserver.observe(el);
+            });
+
+            // --- 2. Seamless Mesh Network Canvas Engine ---
+            const heroSection = document.querySelector(".hero");
+            if (heroSection) {
+                const canvas = document.createElement("canvas");
+                const ctx = canvas.getContext("2d");
+
+                Object.assign(canvas.style, {
+                    position: "absolute", top: "0", left: "0", width: "100%", height: "100%",
+                    zIndex: "0", pointerEvents: "none"
+                });
+                heroSection.style.position = "relative";
+                heroSection.insertBefore(canvas, heroSection.firstChild);
+
+                let points = [];
+                let maxPoints = 110;
+                const maxDist = 165;
+                let mouse = { x: null, y: null, radius: 220 };
+
+                window.addEventListener("mousemove", (e) => {
+                    const rect = heroSection.getBoundingClientRect();
+                    mouse.x = e.clientX - rect.left;
+                    mouse.y = e.clientY - rect.top;
+                });
+
+                window.addEventListener("mouseleave", () => {
+                    mouse.x = null;
+                    mouse.y = null;
+                });
+
+                class MeshNode {
+                    constructor(startX, startY) {
+                        // Accepts coordinates if repositioning on screen resize boundaries
+                        this.x = startX !== undefined ? startX : Math.random() * canvas.width;
+                        this.y = startY !== undefined ? startY : Math.random() * canvas.height;
+                        this.vx = (Math.random() - 0.5) * 0.16;
+                        this.vy = (Math.random() - 0.5) * 0.16;
+                        this.baseRadius = Math.random() * 1.5 + 0.8;
+                        this.radius = this.baseRadius;
+                        this.pulseFactor = Math.random() * Math.PI;
+                        this.depth = Math.random() * 0.5 + 0.3;
+                    }
+                    update() {
+                        this.x += this.vx;
+                        this.y += this.vy;
+
+                        if (this.x < 0) this.x = canvas.width;
+                        if (this.x > canvas.width) this.x = 0;
+                        if (this.y < 0) this.y = canvas.height;
+                        if (this.y > canvas.height) this.y = 0;
+
+                        this.pulseFactor += 0.012;
+                        this.radius = this.baseRadius + Math.sin(this.pulseFactor) * 0.3;
+
+                        if (mouse.x !== null && mouse.y !== null) {
+                            const dx = mouse.x - this.x;
+                            const dy = mouse.y - this.y;
+                            const distance = Math.hypot(dx, dy);
+
+                            if (distance < mouse.radius) {
+                                const force = (mouse.radius - distance) / mouse.radius;
+                                this.x -= (dx / distance) * force * 0.35;
+                                this.y -= (dy / distance) * force * 0.35;
+                            }
+                        }
+                    }
+                    draw() {
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(34, 197, 94, ${this.depth * 0.5})`;
+                        ctx.fill();
+                    }
+                }
+
+                // SMART RESIZE: Scales coordinates instead of wiping arrays
+                function resizeCanvas() {
+                    const oldWidth = canvas.width || heroSection.offsetWidth;
+                    const oldHeight = canvas.height || heroSection.offsetHeight;
+
+                    canvas.width = heroSection.offsetWidth;
+                    canvas.height = heroSection.offsetHeight;
+
+                    const targetPoints = Math.min(Math.floor((canvas.width * canvas.height) / 7500), maxPoints);
+
+                    if (points.length === 0) {
+                        // Initial generation pass on boot up
+                        for (let i = 0; i < targetPoints; i++) {
+                            points.push(new MeshNode());
+                        }
+                    } else {
+                        // Dynamically re-map current coordinate sets safely
+                        points.forEach(p => {
+                            p.x = (p.x / oldWidth) * canvas.width;
+                            p.y = (p.y / oldHeight) * canvas.height;
+                        });
+
+                        // Add or trim nodes smoothly if canvas changes significantly
+                        if (points.length < targetPoints) {
+                            while (points.length < targetPoints) points.push(new MeshNode());
+                        } else if (points.length > targetPoints) {
+                            points.splice(targetPoints);
+                        }
+                    }
+                }
+
+                window.addEventListener("resize", resizeCanvas);
+                resizeCanvas();
+
+                function animateMesh() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                    for (let i = 0; i < points.length; i++) {
+                        points[i].update();
+                        points[i].draw();
+
+                        for (let j = i + 1; j < points.length; j++) {
+                            const dx = points[i].x - points[j].x;
+                            const dy = points[i].y - points[j].y;
+                            const dist = Math.hypot(dx, dy);
+
+                            if (dist < maxDist) {
+                                let alpha = (1 - dist / maxDist) * 0.13 * (points[i].depth * points[j].depth);
+
+                                if (mouse.x !== null && mouse.y !== null) {
+                                    const mDist1 = Math.hypot(mouse.x - points[i].x, mouse.y - points[i].y);
+                                    const mDist2 = Math.hypot(mouse.x - points[j].x, mouse.y - points[j].y);
+                                    if (mDist1 < mouse.radius || mDist2 < mouse.radius) {
+                                        alpha *= 2.0;
+                                    }
+                                }
+
+                                ctx.beginPath();
+                                ctx.moveTo(points[i].x, points[i].y);
+                                ctx.lineTo(points[j].x, points[j].y);
+                                ctx.strokeStyle = `rgba(34, 197, 94, ${alpha})`;
+                                ctx.lineWidth = dist < maxDist * 0.35 ? 0.8 : 0.4;
+                                ctx.stroke();
+
+                                if (Math.random() < 0.00025 && dist < maxDist * 0.6) {
+                                    ctx.beginPath();
+                                    const pct = (Date.now() % 1800) / 1800;
+                                    const px = points[i].x + dx * pct;
+                                    const py = points[i].y + dy * pct;
+                                    ctx.arc(px, py, 1.8, 0, Math.PI * 2);
+                                    ctx.fillStyle = `rgba(34, 197, 94, ${points[i].depth})`;
+                                    ctx.fill();
+                                }
+                            }
+                        }
+                    }
+                    requestAnimationFrame(animateMesh);
+                }
+                animateMesh();
+            }
+
+            // --- 3. Simple Back-To-Top Button ---
+            const topBtn = document.createElement("button");
+            topBtn.innerHTML = '<i class="fa-solid fa-arrow-up"></i>';
+            Object.assign(topBtn.style, {
+                position: "fixed", bottom: "30px", right: "30px", width: "45px", height: "45px",
+                backgroundColor: "#1a1c1e", color: "#22c55e", border: "1px solid #2a2d31",
+                borderRadius: "50%", cursor: "pointer", display: "none", zIndex: "2000",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.4)", transition: "all 0.3s ease"
+            });
+            document.body.appendChild(topBtn);
+
+            window.addEventListener("scroll", () => {
+                topBtn.style.display = window.scrollY > 400 ? "block" : "none";
+            });
+
+            topBtn.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+            topBtn.addEventListener("mouseenter", () => {
+                topBtn.style.backgroundColor = "rgba(34, 197, 94, 0.1)";
+                topBtn.style.borderColor = "#22c55e";
+                topBtn.style.boxShadow = "0 0 15px rgba(34, 197, 94, 0.3)";
+            });
+            topBtn.addEventListener("mouseleave", () => {
+                topBtn.style.backgroundColor = "#1a1c1e";
+                topBtn.style.borderColor = "#2a2d31";
+                topBtn.style.boxShadow = "0 4px 12px rgba(0,0,0,0.4)";
+            });
+
+            const solarPopupTrigger = document.querySelector('.solar-popup-trigger');
+            const solarPopup = document.getElementById('solar-popup');
+            const solarPopupClose = document.getElementById('solar-popup-close');
+            const handheldPopupTrigger = document.querySelector('.handheld-popup-trigger');
+            const handheldPopup = document.getElementById('handheld-popup');
+            const handheldPopupClose = document.getElementById('handheld-popup-close');
+            const relayPopupTrigger = document.querySelector('.relay-popup-trigger');
+            const relayPopup = document.getElementById('relay-popup');
+            const relayPopupClose = document.getElementById('relay-popup-close');
+            const routerPopupTrigger = document.querySelector('.router-popup-trigger');
+            const routerPopup = document.getElementById('router-popup');
+            const routerPopupClose = document.getElementById('router-popup-close');
+
+            const closeHandheldPopup = () => {
+                if (!handheldPopup) return;
+                handheldPopup.classList.remove('active');
+                handheldPopup.setAttribute('aria-hidden', 'true');
+            };
+
+            const closeRelayPopup = () => {
+                if (!relayPopup) return;
+                relayPopup.classList.remove('active');
+                relayPopup.setAttribute('aria-hidden', 'true');
+            };
+
+            const closeRouterPopup = () => {
+                if (!routerPopup) return;
+                routerPopup.classList.remove('active');
+                routerPopup.setAttribute('aria-hidden', 'true');
+            };
+
+            if (solarPopupTrigger && solarPopup && solarPopupClose) {
+                const closeSolarPopup = () => {
+                    solarPopup.classList.remove('active');
+                    solarPopup.setAttribute('aria-hidden', 'true');
+                };
+
+                solarPopupTrigger.addEventListener('click', () => {
+                    solarPopup.classList.add('active');
+                    solarPopup.setAttribute('aria-hidden', 'false');
+                });
+
+                solarPopupClose.addEventListener('click', closeSolarPopup);
+                solarPopup.addEventListener('click', (e) => {
+                    if (e.target === solarPopup) closeSolarPopup();
+                });
+
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') closeSolarPopup();
+                });
+            }
+
+            if (handheldPopupTrigger && handheldPopup && handheldPopupClose) {
+                handheldPopupTrigger.addEventListener('click', () => {
+                    handheldPopup.classList.add('active');
+                    handheldPopup.setAttribute('aria-hidden', 'false');
+                });
+
+                handheldPopupClose.addEventListener('click', closeHandheldPopup);
+                handheldPopup.addEventListener('click', (e) => {
+                    if (e.target === handheldPopup) closeHandheldPopup();
+                });
+            }
+
+            if (relayPopupTrigger && relayPopup && relayPopupClose) {
+                relayPopupTrigger.addEventListener('click', () => {
+                    relayPopup.classList.add('active');
+                    relayPopup.setAttribute('aria-hidden', 'false');
+                });
+
+                relayPopupClose.addEventListener('click', closeRelayPopup);
+                relayPopup.addEventListener('click', (e) => {
+                    if (e.target === relayPopup) closeRelayPopup();
+                });
+            }
+
+            if (routerPopupTrigger && routerPopup && routerPopupClose) {
+                routerPopupTrigger.addEventListener('click', () => {
+                    routerPopup.classList.add('active');
+                    routerPopup.setAttribute('aria-hidden', 'false');
+                });
+
+                routerPopupClose.addEventListener('click', closeRouterPopup);
+                routerPopup.addEventListener('click', (e) => {
+                    if (e.target === routerPopup) closeRouterPopup();
+                });
+            }
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    closeHandheldPopup();
+                    closeRelayPopup();
+                    closeRouterPopup();
+                }
+            });
+        });
+    </script>
+</head>
+
+<body>
+
+    <header class="navbar">
+        <div class="container">
+            <!-- Path explicitly updated to target the local directory syntax -->
+            <a href="index.html" class="logo-brand">
+                <img src="./img/CCM_logo-night.png" alt="CC Mesh Logo" class="brand-img">
+                <span class="brand-text"><span style="color: #0395c8;">ccme.sh  </span> Crystal Coast of North Carolina Mesh Network
+            </a>
+            <nav>
+                <ul class="nav-links">
+                    <!-- Meshtastic Dropdown Nesting Menu -->
+                    <li class="dropdown">
+                        <a href="meshtastic.html" class="dropdown-toggle">Meshtastic <i
+                                class="fa-solid fa-chevron-down nav-arrow"></i></a>
+                        <ul class="dropdown-menu">
+                            <li><a href="meshtastic.html"><i class="fa-solid fa-circle-info"></i> Network Info</a></li>
+                            <li><a href="config-meshtastic.html"><i class="fa-solid fa-sliders"></i> Setup Instructions</a>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <!-- MeshCore Dropdown Nesting Menu -->
+                    <li class="dropdown">
+                        <a href="meshcore.html" class="dropdown-toggle">MeshCore <i
+                                class="fa-solid fa-chevron-down nav-arrow"></i></a>
+                        <ul class="dropdown-menu">
+                            <li><a href="meshcore.html"><i class="fa-solid fa-circle-info"></i> Network Info</a></li>
+                            <li><a href="config-meshcore.html"><i class="fa-solid fa-sliders"></i> Setup Instructions</a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container hero-content">
+            <h1><span style="color: #22c55e;">Meshtastic</span></h1>
+            <p>Meshtastic® is a project that enables you to use inexpensive LoRa radios as a long range off-grid communication platform in areas without existing or reliable communications infrastructure. This project is 100% community driven and open source!</p>
+        </div>
+    </section>
+    <!-- SECTION 1: Protocol Analysis (Strict 2x2 Matrix) -->
+    <section class="features" style="padding: 2rem 0 2rem 0;">
+        <h2 style="margin: 0 0 1rem 0; text-align: center;">What is <span style="color: #22c55e;">Meshtastic</span>?</h2>
+        <div class="container">
+            <div style="margin-top: 1rem; text-align: left;">
+                <p>Meshtastic is an open-source project that uses small, low-cost LoRa radios to create a decentralized, off-grid communication network. It lets you send short text messages and share GPS locations without any cell service or internet. Messages hop directly from device to device over long-range radio, so you can stay in touch during outdoor adventures, emergencies, or anywhere regular networks don't reach.</p>
+
+                <p>Think of it as your own private walkie-talkie text network - free to use once you have the devices, and supported by a friendly community of users and developers worldwide.</p>
+
+                <h3>How <span style="color: #22c55e;">Meshtastic</span> Works</h3>
+
+                <h4>Mesh Networking</h4>
+                <p>Meshtastic devices form a mesh network, meaning each device (or "node") can talk to other nearby nodes and can pass messages along for others. Unlike cell phones that rely on towers, a mesh has no central infrastructure - every node is both a sender and a relay.</p>
+
+                <p>If you send a message and the recipient is out of your direct radio range, intermediate Meshtastic nodes will automatically forward the message until it reaches its destination. Meshtastic uses a "managed flooding" approach to routing: when a node receives a new message, it rebroadcasts it unless it has already seen that message before. Each message only gets forwarded a limited number of times (a hop limit), so the network doesn't get stuck in an endless loop.</p>
+
+                <h4>LoRa Radio Technology</h4>
+                <p>The magic behind Meshtastic's range is LoRa ("Long Range") radio. LoRa is a low-power wireless protocol that operates on license-free radio bands (915 MHz in the US or 868 MHz in Europe). These radios can send data for several kilometers - often 2-5 km in typical conditions, and much farther (tens of kilometers) with line-of-sight and good antennas.</p>
+
+                <p>LoRa's data rate is very low compared to Wi-Fi or cellular, so Meshtastic is limited to text messages and GPS locations (no photos or big files), and messages have a maximum length of around 200+ characters. This is plenty for short communications like "I'm at the campsite" or emergency signals.</p>
+
+                <h3>Hardware</h3>
+                <p>One of the great things about Meshtastic is that it runs on affordable, off-the-shelf hardware. Most Meshtastic nodes use an ESP32 or similar microcontroller paired with a LoRa radio module, plus optionally a GPS receiver. Popular choices include:</p>
+                <ul>
+                    <li>LILYGO T-Beam (ESP32 with LoRa and built-in GPS)</li>
+                    <li>LILYGO T-Echo (nRF52-based with e-ink screen)</li>
+                    <li>Heltec WiFi LoRa boards</li>
+                    <li>RAK Wireless modules</li>
+                </ul>
+                <p>These boards typically cost $30-$50, making it practical to get a few for your group.</p>
+
+                <h3>The <span style="color: #22c55e;">Meshtastic</span> App</h3>
+                <p>Using Meshtastic is designed to be beginner-friendly. There's a free official Meshtastic companion app for Android and iOS that pairs with your device via Bluetooth or Wi-Fi. Once connected, the app provides a chat interface very similar to a messaging app.</p>
+
+                <p>The mobile app also shows a map with GPS locations of your team - super useful for hiking or search & rescue, as you can see where all your Meshtastic-equipped friends are on a map.</p>
+
+                <p>Meshtastic supports encryption so your messages aren't readable by others outside your group. You can set your own channel name and encryption key to create a private network. The communications use strong AES encryption.</p>
+
+                <h3>Common Use Cases</h3>
+
+                <h4>Emergency Communication</h4>
+                <p>When disasters strike and cell towers go down, Meshtastic serves as a backup network for first responders and communities.</p>
+
+                <h4>Outdoor Adventures</h4>
+                <p>Hikers, campers, and skiers can stay in contact over many kilometers of terrain where there's no cell service.</p>
+
+                <h4>Group Events</h4>
+                <p>At festivals or large gatherings where cellular networks are overloaded, Meshtastic provides reliable local communication.</p>
+
+                <h4>Rural Living</h4>
+                <p>Neighbors on distant farms can install nodes to create a local messaging network spanning their area.</p>
+
+                <h3>Strengths &amp; Limitations</h3>
+
+                <h4>Strengths</h4>
+                <ul>
+                    <li>Free and open-source</li>
+                    <li>Very user-friendly for beginners</li>
+                    <li>Large community and documentation</li>
+                    <li>Self-organizing network</li>
+                </ul>
+
+                <h4>Limitations</h4>
+                <ul>
+                    <li>Text only (no voice or images)</li>
+                    <li>Can get congested in very large networks</li>
+                    <li>Limited to 7 hops maximum</li>
+                    <li>More network chatter due to flooding</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+    <section class="hero-content-block" style="padding: 1.5rem 0 0.75rem;">
+        <div class="container">
+            <h2 style="text-align: center;"><span style="color: #22c55e;">Meshtastic</span> Node Architecture</h2>
+        </div>
+    </section>
+
+    <!-- SECTION 2: Meshtastic Node Architecture (Strict 2x2 Matrix) -->
+    <section class="features" style="padding: 1.75rem 0;">
+        <div class="container">
+            <div class="grid-2x2" style="margin-top: 1rem;">
+                
+                <!-- Card 1: Mobile Client -->
+                <div class="card feature-card handheld-popup-trigger">
+                    <i class="fa-solid fa-mobile-screen-button feature-icon"></i>
+                    <h3 style="margin-bottom: 0.75rem;">Client / Handheld Nodes</h3>
+                    <p>Your everyday pocket companion hardware—like the LILYGO T-Echo or T1000-E—paired via <span class="settings-value">Bluetooth</span>. These modules handle messaging, receive local mapping coordinates, and transmit user text strings directly out into the immediate over-the-air workspace. Set to the standard <span class="settings-value">Client-Mute</span> role, acting as the end user.</p>
+                </div>
+
+                <!-- Card 2: Stationary Relay -->
+                <div class="card feature-card relay-popup-trigger">
+                    <i class="fa-solid fa-tower-broadcast feature-icon"></i>
+                    <h3 style="margin-bottom: 0.75rem;">Stationary Relays</h3>
+                    <p>Standard client-configured devices placed in high-utility clear points like a second-floor window, attic space, or standard roof ridge. Set to the standard <span class="settings-value">Client</span> role, they participate fully in calculated flood-routing steps to extend range across local residential areas.</p>
+                </div>
+
+                <!-- Card 3: Infrastructure Routers -->
+                <div class="card feature-card router-popup-trigger">
+                    <i class="fa-solid fa-mountain-sun feature-icon"></i>
+                    <h3 style="margin-bottom: 0.75rem;">High-Elevation Routers</h3>
+                    <p>Reserved for premium hardware packages for linking separate meshes that are deployed on structural tower masts, mountain peaks, or tall commercial roofs (not for normal home or localized installations). Configured with specialized <span class="settings-value">Router</span> roles, these units alter the transmission timing matrix to ensure they aggressively relay long-range data packages first.</p>
+                </div>
+
+                <!-- Card 4: Off-Grid Power Stations -->
+                <div class="card feature-card solar-popup-trigger">
+                    <i class="fa-solid fa-solar-panel feature-icon"></i>
+                    <h3 style="margin-bottom: 0.75rem;">Off-Grid Solar Nodes</h3>
+                    <p>Ruggedized, weatherproof outdoor boxes combining low-power components (like RAK WisBlock or Seeed Studios XIAO or Heltec modules) with <span class="settings-value">LiFePO4 Batteries</span> and solar panels. These modules sit completely independent of the conventional elecrical power to preserve or extend the mesh where conventional power is unavailable, such as on a roof or tower or beach or island or mountain top or remote field or any other off-grid location, ensuring continuous network coverage and reliability.</p>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Dedicated Protocol Map Block -->
+    <section class="map-section" style="padding: 2rem 0;">
+        <div class="container">
+            <h2 style="text-align: center;">Live NC <span style="color: #22c55e;">Meshtastic</span> Topology Map</h2>
+            <p style="text-align: center;">Track reported public coordinator nodes, telemetry signals, and active baseline line-of-sight tracking
+                data vectors.</p>
+            <div class="map-placeholder" style="margin-top: 1rem;">
+                Meshtastic Map
+                <iframe src="https://ncmesh.net/map/?lat=35.38904754680693&lng=280.4727172851563&zoom=7#"
+                    style="width:100%; height:100%; border:none; border-radius:0.5rem;"></iframe>
+            </div>
+        </div>
+    </section>
+
+    <div id="solar-popup" class="feature-popup" aria-hidden="true">
+        <div class="feature-popup-content" style="max-width: 546px;">
+            <button id="solar-popup-close" class="feature-popup-close" aria-label="Close popup">×</button>
+            <h3>Off-Grid Solar Nodes</h3>
+            <img src="./img/solar.png" alt="Off-grid solar node setup" style="width: 100%; height: auto; border-radius: 0.5rem;">
+        </div>
+    </div>
+
+    <div id="handheld-popup" class="feature-popup" aria-hidden="true">
+        <div class="feature-popup-content" style="max-width: 546px;">
+            <button id="handheld-popup-close" class="feature-popup-close" aria-label="Close popup">×</button>
+            <h3>Client / Handheld Nodes</h3>
+            <img src="./img/handle_devices.jpg" alt="Client and handheld devices" style="width: 100%; height: auto; border-radius: 0.5rem;">
+        </div>
+    </div>
+
+    <div id="relay-popup" class="feature-popup" aria-hidden="true">
+        <div class="feature-popup-content" style="max-width: 546px;">
+            <button id="relay-popup-close" class="feature-popup-close" aria-label="Close popup">×</button>
+            <h3>Stationary Relays</h3>
+            <img src="./img/roof.png" alt="Stationary relay node on roof" style="width: 100%; height: auto; border-radius: 0.5rem;">
+        </div>
+    </div>
+
+    <div id="router-popup" class="feature-popup" aria-hidden="true">
+        <div class="feature-popup-content" style="max-width: 546px;">
+            <button id="router-popup-close" class="feature-popup-close" aria-label="Close popup">×</button>
+            <h3>High-Elevation Routers</h3>
+            <img src="./img/mountain.png" alt="High-elevation router deployment" style="width: 100%; height: auto; border-radius: 0.5rem;">
+        </div>
+    </div>
+
+    <section class="hero-buttons-section" style="padding: 1rem 0 1.5rem;">
+        <div class="container">
+            <div class="hero-buttons" style="margin-top: 0;">
+                <a href="lora.html" class="btn btn-secondary" style="background-color: #0395c8 !important; color: #ffffff !important; border-color: #0395c8;">What is "LoRa"?</a>
+            </div>
+            <div class="hero-buttons" style="margin-top: 0.75rem;">
+                <a href="meshtastic-vs-meshcore.html" class="btn btn-secondary" style="background-color: #0f766e !important; color: #ffffff !important; border-color: #0f766e;">Meshtastic vs MeshCore</a>
+            </div>
+            <div class="hero-buttons" style="margin-top: 0.75rem;">
+                <a href="#" class="btn btn-primary" aria-disabled="true" tabindex="-1" style="background-color: #14532d !important; border-color: #14532d !important; color: #a3a3a3 !important; pointer-events: none; cursor: not-allowed; opacity: 0.8;">Explore Meshtastic</a>
+                <a href="meshcore.html" class="btn btn-secondary" style="background-color: #3b82f6 !important; color: #000000 !important; border-color: #3b82f6;">Explore MeshCore</a>
+            </div>
+            <div class="hero-buttons" style="margin-top: 0.75rem;">
+                <a href="config-meshtastic.html" class="btn btn-primary">Configure Meshtastic</a>
+                <a href="config-meshcore.html" class="btn btn-secondary" style="background-color: #3b82f6 !important; color: #000000 !important; border-color: #3b82f6;">Configure MeshCore</a>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <p>© 2026 Crystal Coast of NC Mesh. Powered by the community.</p>
+        </div>
+    </footer>
+</body>
+
+</html>

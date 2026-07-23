@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meshtastic vs MeshCore | CC Mesh</title>
+    <link rel="stylesheet" href="./includes/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+        integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            if (window.innerWidth <= 768) {
+                const dropdownToggles = document.querySelectorAll('.dropdown-toggle');
+
+                dropdownToggles.forEach(toggle => {
+                    toggle.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const parentLi = toggle.closest('.dropdown');
+                        parentLi.classList.toggle('active');
+                        const targetMenu = parentLi.querySelector('.dropdown-menu');
+
+                        if (targetMenu.style.display === 'block') {
+                            targetMenu.style.display = 'none';
+                        } else {
+                            targetMenu.style.display = 'block';
+                        }
+                    });
+                });
+            }
+
+            const observerOptions = { root: null, rootMargin: "0px", threshold: 0.1 };
+            const revealObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.opacity = "1";
+                        entry.target.style.transform = "translateY(0)";
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, observerOptions);
+
+            const animatedElements = document.querySelectorAll(".card, .hero-content h1, .hero-content p");
+            animatedElements.forEach(el => {
+                el.style.opacity = "0";
+                el.style.transform = "translateY(20px)";
+                el.style.transition = "opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)";
+                revealObserver.observe(el);
+            });
+        });
+    </script>
+</head>
+
+<body>
+    <header class="navbar">
+        <div class="container">
+            <!-- Path explicitly updated to target the local directory syntax -->
+            <a href="index.html" class="logo-brand">
+                <img src="./img/CCM_logo-night.png" alt="CC Mesh Logo" class="brand-img">
+                <span class="brand-text"><span style="color: #0395c8;">ccme.sh  </span> Crystal Coast of North Carolina Mesh Network
+            </a>
+            <nav>
+                <ul class="nav-links">
+                    <!-- Meshtastic Dropdown Nesting Menu -->
+                    <li class="dropdown">
+                        <a href="meshtastic.html" class="dropdown-toggle">Meshtastic <i
+                                class="fa-solid fa-chevron-down nav-arrow"></i></a>
+                        <ul class="dropdown-menu">
+                            <li><a href="meshtastic.html"><i class="fa-solid fa-circle-info"></i> Network Info</a></li>
+                            <li><a href="config-meshtastic.html"><i class="fa-solid fa-sliders"></i> Setup Instructions</a>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <!-- MeshCore Dropdown Nesting Menu -->
+                    <li class="dropdown">
+                        <a href="meshcore.html" class="dropdown-toggle">MeshCore <i
+                                class="fa-solid fa-chevron-down nav-arrow"></i></a>
+                        <ul class="dropdown-menu">
+                            <li><a href="meshcore.html"><i class="fa-solid fa-circle-info"></i> Network Info</a></li>
+                            <li><a href="config-meshcore.html"><i class="fa-solid fa-sliders"></i> Setup Instructions</a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero" style="padding-top: 9rem;">
+        <div class="container hero-content">
+            <h1><span style="color: #22c55e;">Meshtastic</span> vs <span style="color: #3b82f6;">MeshCore</span></h1>
+            <p style="margin-top: 0.4rem; margin-bottom: 0.8rem; font-size: 1.25rem; font-style: italic; font-weight: 700;">(and why do I care?)</p>
+            <p>Both Meshtastic and MeshCore enable off-grid communication using LoRa radios. They share the same purpose but take fundamentally different approaches to routing. Crystal Coast Mesh supports both — here's how to choose.</p>
+        </div>
+    </section>
+
+    <section class="features">
+        <div class="container">
+            <div class="comparison-layout">
+                <div class="comparison-top">
+                    <div class="card">
+                        <img src="./img/meshtastic-logo.png" alt="Meshtastic logo" style="width: 48px; height: 48px; margin-bottom: 1rem; object-fit: contain;">
+                        <h3 style="color: #22c55e;">Meshtastic</h3>
+                        <p style="text-align: left;">The established choice. Simple, plug-and-play mesh networking where every device can relay messages. Great for beginners, small groups, and ad-hoc situations.</p>
+                        <ul style="text-align: left; padding-left: 1.2rem;">
+                            <li>Established since 2019, large community</li>
+                            <li>Free, open-source apps (Android/iOS)</li>
+                            <li>No setup required - devices auto-connect</li>
+                            <li>Wide device support and documentation</li>
+                        </ul>
+                        <p style="text-align: left;"><strong>Best for:</strong> Beginners, hiking groups, casual use, small networks</p>
+                    </div>
+                    <div class="card">
+                        <img src="./img/Meshcore-logo.png" alt="MeshCore logo" style="width: 48px; height: 48px; margin-bottom: 1rem; object-fit: contain;">
+                        <h3 style="color: #0395c8;">MeshCore</h3>
+                        <p style="text-align: left;">The newer, more efficient option. Uses dedicated repeaters for smarter routing and better scalability. Ideal for larger networks and planned deployments.</p>
+                        <ul style="text-align: left; padding-left: 1.2rem;">
+                            <li>Launched 2025, rapidly evolving</li>
+                            <li>More efficient routing, less network chatter</li>
+                            <li>Supports up to 64 hops (vs 7 for Meshtastic)</li>
+                            <li>Confirmed message delivery feedback</li>
+                        </ul>
+                        <p style="text-align: left;"><strong>Best for:</strong> Large networks, planned deployments, tech enthusiasts</p>
+                    </div>
+                </div>
+                <div class="card comparison-card">
+                    <i class="fa-solid fa-scale-balanced feature-icon" style="color: #ffffff;"></i>
+                    <h3>What to Compare</h3>
+                    <table class="compare-table">
+                        <thead>
+                            <tr>
+                                <th>Feature</th>
+                                <th>Meshtastic</th>
+                                <th>MeshCore</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Routing Method</td>
+                                <td>Flood (all nodes relay)</td>
+                                <td>Structured (dedicated repeaters)</td>
+                            </tr>
+                            <tr>
+                                <td>Max Hops</td>
+                                <td>7</td>
+                                <td>64</td>
+                            </tr>
+                            <tr>
+                                <td>Setup Complexity</td>
+                                <td>Very Easy</td>
+                                <td>Moderate</td>
+                            </tr>
+                            <tr>
+                                <td>Mobile App</td>
+                                <td>Free, open-source</td>
+                                <td>Free (optional $7.99 upgrade)</td>
+                            </tr>
+                            <tr>
+                                <td>Community Size</td>
+                                <td>Large</td>
+                                <td>Growing</td>
+                            </tr>
+                            <tr>
+                                <td>Network Scalability</td>
+                                <td>Good (small-medium)</td>
+                                <td>Excellent (large)</td>
+                            </tr>
+                            <tr>
+                                <td>Delivery Confirmation</td>
+                                <td>Basic</td>
+                                <td>Detailed</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="hero-content-block">
+        <div class="container">
+            <div class="hero-content-extended" style="text-align: left;">
+                <h2 style="text-align: center; margin-bottom: 1rem;">Which Should You Choose?</h2>
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div class="card" style="margin: 0; text-align: left;">
+                        <h3 style="text-align: center; margin-top: 0; margin-bottom: 0.75rem;">Choose <span style="color: #22c55e;">Meshtastic</span> if...</h3>
+                        <ul>
+                            <li>You're new to mesh networking and want the easiest setup</li>
+                            <li>You need quick, ad-hoc communication (hiking, camping, events)</li>
+                            <li>You have a small group (under 20 nodes) in a localized area</li>
+                            <li>You prefer completely free, open-source software</li>
+                            <li>You want access to extensive documentation and community support</li>
+                        </ul>
+                    </div>
+
+                    <div class="card meshcore-choice-card" style="margin: 0; text-align: left;">
+                        <h3 style="text-align: center; margin-top: 0; margin-bottom: 0.75rem;">Choose <span style="color: #3b82f6;">MeshCore</span> if...</h3>
+                        <ul>
+                            <li>You're building a larger, planned network (town or regional coverage)</li>
+                            <li>You need reliable delivery confirmation for critical messages</li>
+                            <li>You can place dedicated repeater infrastructure</li>
+                            <li>You want more control over network routing and behavior</li>
+                            <li>You enjoy being an early adopter and helping shape new technology</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="hero-content-block">
+        <div class="container">
+            <div class="hero-content-extended" style="text-align: left;">
+                <div style="border: 2px solid #f87171; border-radius: 0.75rem; padding: 1rem 1.25rem; margin-top: 1.5rem;">
+                    <h3 style="text-align: center; margin-top: 0; margin-bottom: 0.75rem;">Important: Not Compatible</h3>
+                    <p style="margin-bottom: 0;">Meshtastic and MeshCore are <strong>not compatible</strong> with each other. A Meshtastic node cannot talk to a MeshCore node directly - they use different protocols and encryption. All participants in a mesh network must use the same system. Crystal Coast Mesh supports both protocols, but you'll need to choose one for your group or deployment.</p>
+                </div>
+
+                <div style="border: 1px solid #6b7280; border-radius: 0.75rem; padding: 1rem 1.25rem; margin-top: 1.5rem;">
+                    <h3 style="text-align: center; margin-top: 0; margin-bottom: 0.75rem;">Good news</h3>
+                    <p style="margin-bottom: 0;">The same hardware works for both! You can flash devices with either firmware and switch between them. Many enthusiasts keep some nodes on Meshtastic and some on MeshCore for different projects.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="hero-buttons-section">
+        <div class="container">
+            <div class="hero-buttons">
+                <a href="config-meshtastic.html" class="btn btn-primary">Configure Meshtastic</a>
+                <a href="config-meshcore.html" class="btn btn-secondary" style="background-color: #3b82f6 !important; color: #000000 !important; border-color: #3b82f6;">Configure MeshCore</a>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <p>© 2026 Crystal Coast of NC Mesh. Powered by the community.</p>
+        </div>
+    </footer>
+</body>
+
+</html>

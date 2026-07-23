@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoRa | CC Mesh</title>
+    <link rel="stylesheet" href="./includes/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+        integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            if (window.innerWidth <= 768) {
+                const dropdownToggles = document.querySelectorAll('.dropdown-toggle');
+
+                dropdownToggles.forEach(toggle => {
+                    toggle.addEventListener('click', (e) => {
+                        // Block direct redirect link if mobile sub-menu drawer is collapsed
+                        e.preventDefault();
+                        const parentLi = toggle.closest('.dropdown');
+
+                        // Toggle active tracking layouts
+                        parentLi.classList.toggle('active');
+                        const targetMenu = parentLi.querySelector('.dropdown-menu');
+
+                        if (targetMenu.style.display === 'block') {
+                            targetMenu.style.display = 'none';
+                        } else {
+                            targetMenu.style.display = 'block';
+                        }
+                    });
+                });
+            }
+
+            // --- 1. Clean Scroll Reveal Effect ---
+            const observerOptions = { root: null, rootMargin: "0px", threshold: 0.1 };
+            const revealObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.opacity = "1";
+                        entry.target.style.transform = "translateY(0)";
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, observerOptions);
+
+            const animatedElements = document.querySelectorAll(".card, .map-placeholder, .hero-content h1, .hero-content p");
+            animatedElements.forEach(el => {
+                el.style.opacity = "0";
+                el.style.transform = "translateY(20px)";
+                el.style.transition = "opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)";
+                revealObserver.observe(el);
+            });
+
+            // --- 2. Seamless Mesh Network Canvas Engine ---
+            const heroSection = document.querySelector(".hero");
+            if (heroSection) {
+                const canvas = document.createElement("canvas");
+                const ctx = canvas.getContext("2d");
+
+                Object.assign(canvas.style, {
+                    position: "absolute", top: "0", left: "0", width: "100%", height: "100%",
+                    zIndex: "0", pointerEvents: "none"
+                });
+                heroSection.style.position = "relative";
+                heroSection.insertBefore(canvas, heroSection.firstChild);
+
+                let points = [];
+                let maxPoints = 110;
+                const maxDist = 165;
+                let mouse = { x: null, y: null, radius: 220 };
+
+                window.addEventListener("mousemove", (e) => {
+                    const rect = heroSection.getBoundingClientRect();
+                    mouse.x = e.clientX - rect.left;
+                    mouse.y = e.clientY - rect.top;
+                });
+
+                window.addEventListener("mouseleave", () => {
+                    mouse.x = null;
+                    mouse.y = null;
+                });
+
+                class MeshNode {
+                    constructor(startX, startY) {
+                        // Accepts coordinates if repositioning on screen resize boundaries
+                        this.x = startX !== undefined ? startX : Math.random() * canvas.width;
+                        this.y = startY !== undefined ? startY : Math.random() * canvas.height;
+                        this.vx = (Math.random() - 0.5) * 0.16;
+                        this.vy = (Math.random() - 0.5) * 0.16;
+                        this.baseRadius = Math.random() * 1.5 + 0.8;
+                        this.radius = this.baseRadius;
+                        this.pulseFactor = Math.random() * Math.PI;
+                        this.depth = Math.random() * 0.5 + 0.3;
+                    }
+                    update() {
+                        this.x += this.vx;
+                        this.y += this.vy;
+
+                        if (this.x < 0) this.x = canvas.width;
+                        if (this.x > canvas.width) this.x = 0;
+                        if (this.y < 0) this.y = canvas.height;
+                        if (this.y > canvas.height) this.y = 0;
+
+                        this.pulseFactor += 0.012;
+                        this.radius = this.baseRadius + Math.sin(this.pulseFactor) * 0.3;
+
+                        if (mouse.x !== null && mouse.y !== null) {
+                            const dx = mouse.x - this.x;
+                            const dy = mouse.y - this.y;
+                            const distance = Math.hypot(dx, dy);
+
+                            if (distance < mouse.radius) {
+                                const force = (mouse.radius - distance) / mouse.radius;
+                                this.x -= (dx / distance) * force * 0.35;
+                                this.y -= (dy / distance) * force * 0.35;
+                            }
+                        }
+                    }
+                    draw() {
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(34, 197, 94, ${this.depth * 0.5})`;
+                        ctx.fill();
+                    }
+                }
+
+                // SMART RESIZE: Scales coordinates instead of wiping arrays
+                function resizeCanvas() {
+                    const oldWidth = canvas.width || heroSection.offsetWidth;
+                    const oldHeight = canvas.height || heroSection.offsetHeight;
+
+                    canvas.width = heroSection.offsetWidth;
+                    canvas.height = heroSection.offsetHeight;
+
+                    const targetPoints = Math.min(Math.floor((canvas.width * canvas.height) / 7500), maxPoints);
+
+                    if (points.length === 0) {
+                        // Initial generation pass on boot up
+                        for (let i = 0; i < targetPoints; i++) {
+                            points.push(new MeshNode());
+                        }
+                    } else {
+                        // Dynamically re-map current coordinate sets safely
+                        points.forEach(p => {
+                            p.x = (p.x / oldWidth) * canvas.width;
+                            p.y = (p.y / oldHeight) * canvas.height;
+                        });
+
+                        // Add or trim nodes smoothly if canvas changes significantly
+                        if (points.length < targetPoints) {
+                            while (points.length < targetPoints) points.push(new MeshNode());
+                        } else if (points.length > targetPoints) {
+                            points.splice(targetPoints);
+                        }
+                    }
+                }
+
+                window.addEventListener("resize", resizeCanvas);
+                resizeCanvas();
+
+                function animateMesh() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                    for (let i = 0; i < points.length; i++) {
+                        points[i].update();
+                        points[i].draw();
+
+                        for (let j = i + 1; j < points.length; j++) {
+                            const dx = points[i].x - points[j].x;
+                            const dy = points[i].y - points[j].y;
+                            const dist = Math.hypot(dx, dy);
+
+                            if (dist < maxDist) {
+                                let alpha = (1 - dist / maxDist) * 0.13 * (points[i].depth * points[j].depth);
+
+                                if (mouse.x !== null && mouse.y !== null) {
+                                    const mDist1 = Math.hypot(mouse.x - points[i].x, mouse.y - points[i].y);
+                                    const mDist2 = Math.hypot(mouse.x - points[j].x, mouse.y - points[j].y);
+                                    if (mDist1 < mouse.radius || mDist2 < mouse.radius) {
+                                        alpha *= 2.0;
+                                    }
+                                }
+
+                                ctx.beginPath();
+                                ctx.moveTo(points[i].x, points[i].y);
+                                ctx.lineTo(points[j].x, points[j].y);
+                                ctx.strokeStyle = `rgba(34, 197, 94, ${alpha})`;
+                                ctx.lineWidth = dist < maxDist * 0.35 ? 0.8 : 0.4;
+                                ctx.stroke();
+
+                                if (Math.random() < 0.00025 && dist < maxDist * 0.6) {
+                                    ctx.beginPath();
+                                    const pct = (Date.now() % 1800) / 1800;
+                                    const px = points[i].x + dx * pct;
+                                    const py = points[i].y + dy * pct;
+                                    ctx.arc(px, py, 1.8, 0, Math.PI * 2);
+                                    ctx.fillStyle = `rgba(34, 197, 94, ${points[i].depth})`;
+                                    ctx.fill();
+                                }
+                            }
+                        }
+                    }
+                    requestAnimationFrame(animateMesh);
+                }
+                animateMesh();
+            }
+
+            // --- 3. Simple Back-To-Top Button ---
+            const topBtn = document.createElement("button");
+            topBtn.innerHTML = '<i class="fa-solid fa-arrow-up"></i>';
+            Object.assign(topBtn.style, {
+                position: "fixed", bottom: "30px", right: "30px", width: "45px", height: "45px",
+                backgroundColor: "#1a1c1e", color: "#22c55e", border: "1px solid #2a2d31",
+                borderRadius: "50%", cursor: "pointer", display: "none", zIndex: "2000",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.4)", transition: "all 0.3s ease"
+            });
+            document.body.appendChild(topBtn);
+
+            window.addEventListener("scroll", () => {
+                topBtn.style.display = window.scrollY > 400 ? "block" : "none";
+            });
+
+            const featureCards = document.querySelectorAll('.feature-card');
+            const featurePopup = document.getElementById('feature-popup');
+            const featurePopupTitle = document.getElementById('feature-popup-title');
+            const featurePopupText = document.getElementById('feature-popup-text');
+            const featurePopupClose = document.querySelector('.feature-popup-close');
+
+            featureCards.forEach(card => {
+                card.addEventListener('click', () => {
+                    featurePopupTitle.textContent = card.dataset.title;
+                    featurePopupText.textContent = card.dataset.text;
+                    featurePopup.classList.add('active');
+                    featurePopup.setAttribute('aria-hidden', 'false');
+                });
+            });
+
+            const closePopup = () => {
+                featurePopup.classList.remove('active');
+                featurePopup.setAttribute('aria-hidden', 'true');
+            };
+
+            featurePopupClose.addEventListener('click', closePopup);
+            featurePopup.addEventListener('click', (e) => {
+                if (e.target === featurePopup) closePopup();
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closePopup();
+            });
+
+            topBtn.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+            topBtn.addEventListener("mouseenter", () => {
+                topBtn.style.backgroundColor = "rgba(34, 197, 94, 0.1)";
+                topBtn.style.borderColor = "#22c55e";
+                topBtn.style.boxShadow = "0 0 15px rgba(34, 197, 94, 0.3)";
+            });
+            topBtn.addEventListener("mouseleave", () => {
+                topBtn.style.backgroundColor = "#1a1c1e";
+                topBtn.style.borderColor = "#2a2d31";
+                topBtn.style.boxShadow = "0 4px 12px rgba(0,0,0,0.4)";
+            });
+        });
+    </script>
+
+
+</head>
+
+<body>
+
+    <!-- Header Navigation Bar Layer -->
+    <header class="navbar">
+        <div class="container">
+            <!-- Path explicitly updated to target the local directory syntax -->
+            <a href="index.html" class="logo-brand">
+                <img src="./img/CCM_logo-night.png" alt="CC Mesh Logo" class="brand-img">
+                <span class="brand-text"><span style="color: #0395c8;">ccme.sh  </span> Crystal Coast of North Carolina Mesh Network
+            </a>
+            <nav>
+                <ul class="nav-links">
+                    <!-- Meshtastic Dropdown Nesting Menu -->
+                    <li class="dropdown">
+                        <a href="meshtastic.html" class="dropdown-toggle">Meshtastic <i
+                                class="fa-solid fa-chevron-down nav-arrow"></i></a>
+                        <ul class="dropdown-menu">
+                            <li><a href="meshtastic.html"><i class="fa-solid fa-circle-info"></i> Network Info</a></li>
+                            <li><a href="config-meshtastic.html"><i class="fa-solid fa-sliders"></i> Setup Instructions</a>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <!-- MeshCore Dropdown Nesting Menu -->
+                    <li class="dropdown">
+                        <a href="meshcore.html" class="dropdown-toggle">MeshCore <i
+                                class="fa-solid fa-chevron-down nav-arrow"></i></a>
+                        <ul class="dropdown-menu">
+                            <li><a href="meshcore.html"><i class="fa-solid fa-circle-info"></i> Network Info</a></li>
+                            <li><a href="config-meshcore.html"><i class="fa-solid fa-sliders"></i> Setup Instructions</a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Canvas Hero Target Zone -->
+    <section class="hero">
+        <div class="container hero-content">
+            <h1>What is a "LoRa"?</h1>
+            <p>A LoRa network uses long-range, low-power radio communication <strong>(LoRa)</strong> to send small amounts of data over unlicensed sub-gigahertz bands. LoRa is the physical radio technology, and network setups like Meshtastic and MeshCore add the higher-level protocol and network structure.</p>
+            <p>A LoRa signal is a chirp spread-spectrum radio transmission: each symbol is represented by a cyclic shifted chirp over the signal bandwidth centered at the base frequency. In real-world visualization with an SDR or RF analyzer, it appears as changing chirp-like frequency sweeps rather than a steady tone.</p>
+            <img src="./img/LoRa_spectrum.png" alt="LoRa spectrum visualization" style="margin-top: 1rem; max-width: 100%; height: auto; border-radius: 0.5rem;">
+        </div>
+    </section>
+
+    <section class="hero-content-block">
+        <div class="container">
+            <div class="hero-content-extended" style="text-align: left;">
+                <h2 style="text-align: center; margin-bottom: 1rem;">Overview of LoRa Networks</h2>
+                <p>A LoRa network utilizes long-range, low-power radio communication technology known as LoRa. This technology is designed to transmit small amounts of data over unlicensed sub-gigahertz frequency bands, typically 902-928 MHz, making it suitable for various applications, especially in remote areas.</p>
+
+                <h3 style="margin-top: 1.5rem;">Key Components of a LoRa Network</h3>
+                <table class="compare-table" style="margin-top: 0.75rem;">
+                    <thead>
+                        <tr>
+                            <th style="text-align: center;">Component</th>
+                            <th style="text-align: center;">Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="text-align: left;">LoRa</td>
+                            <td style="text-align: left;">The physical radio technology that enables long-range communication.</td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: left;">Meshtastic/MeshCore</td>
+                            <td style="text-align: left;">A higher-level protocol that manages communication between devices.</td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: left;">End Devices</td>
+                            <td style="text-align: left;">Battery-powered sensors or trackers that send data using LoRa technology.</td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: left;">Gateways</td>
+                            <td style="text-align: left;">Stations that receive data from end devices and connect to the internet.</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3 style="margin-top: 1.5rem;">Features of LoRa Networks</h3>
+                <ul style="margin-top: 0.75rem; padding-left: 1.25rem;">
+                    <li><strong>Long Range:</strong> Capable of transmitting data over point-to-point distances of up to 200 miles in ideal conditions, and approximately 6 miles point-to-point in practical scenarios.</li>
+                    <li><strong>Low Power Consumption:</strong> Designed for devices that operate on battery power, allowing them to last for years without needing a recharge.</li>
+                    <li><strong>License-Free Operation:</strong> Utilizes unlicensed frequency bands, which means no expensive licensing fees are required for operation.</li>
+                    <li><strong>Robust Communication:</strong> LoRa technology is resilient against interference, making it reliable for transmitting data in various environments.</li>
+                </ul>
+
+                <p style="margin-top: 1rem;">LoRa networks are particularly effective for applications such as smart agriculture, environmental monitoring, and asset tracking, where devices need to communicate over long distances with minimal power usage.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="hero-content-block">
+        <div class="container">
+            <div class="hero-content-extended" style="text-align: left;">
+                <h2 style="text-align: center; margin-bottom: 1rem;">What is a LoRa Mesh?</h2>
+                <p>LoRa Mesh works by using LoRa technology to create a decentralized network where devices can communicate with each other directly, relaying messages through multiple nodes. This allows for extended coverage and flexibility, as the network can automatically adjust its topology when devices join or leave.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="hero-content-block">
+        <div class="container">
+            <div class="hero-content-extended" style="text-align: left;">
+                <img src="./img/lora_mesh_diagram.webp" alt="LoRa mesh applications diagram" style="margin-top: 1rem; max-width: 100%; height: auto; border-radius: 0.5rem;">
+            </div>
+        </div>
+    </section>
+
+    <section class="hero-content-block">
+        <div class="container">
+            <div class="hero-content-extended" style="text-align: left;">
+                <h2 style="text-align: center; margin-bottom: 1rem;">Overview of LoRa Mesh</h2>
+                <p>LoRa Mesh utilizes LoRa technology to establish a decentralized communication network. This network allows devices to communicate directly with one another, enhancing coverage and flexibility.</p>
+
+                <h3 style="margin-top: 1.5rem;">Key Features of LoRa Mesh</h3>
+
+                <h4 style="margin-top: 1rem;">Decentralized Communication</h4>
+                <ul style="margin-top: 0.75rem; padding-left: 1.25rem;">
+                    <li><strong>Direct Device Interaction:</strong> Each device in the network can send and receive messages without relying on a central hub.</li>
+                    <li><strong>Multi-hop Transmission:</strong> Messages can be relayed through multiple nodes, extending the communication range significantly.</li>
+                </ul>
+
+                <h4 style="margin-top: 1rem;">Self-Organizing Network</h4>
+                <ul style="margin-top: 0.75rem; padding-left: 1.25rem;">
+                    <li><strong>Dynamic Topology:</strong> The network automatically adjusts when devices join or leave, ensuring stable data transmission.</li>
+                    <li><strong>Flexibility and Scalability:</strong> This feature allows the network to grow or shrink based on the number of active devices.</li>
+                </ul>
+
+                <h4 style="margin-top: 1rem;">Efficient Data Handling</h4>
+                <ul style="margin-top: 0.75rem; padding-left: 1.25rem;">
+                    <li><strong>Message Relay:</strong> Each node acts as a relay, forwarding messages to their destination. If a direct path is blocked, the message can take alternative routes through other nodes.</li>
+                    <li><strong>Robustness:</strong> The self-healing nature of the mesh means that if one node fails, the network can still function by rerouting messages.</li>
+                </ul>
+
+                <h3 style="margin-top: 1.5rem;">Applications of LoRa Mesh</h3>
+                <p>LoRa Mesh networks are particularly useful in scenarios where traditional communication infrastructure is unavailable, such as:</p>
+                <ul style="margin-top: 0.75rem; padding-left: 1.25rem;">
+                    <li><strong>Outdoor Activities:</strong> Hiking or camping in remote areas without cell service.</li>
+                    <li><strong>Emergency Situations:</strong> Providing communication during disasters when conventional networks are down.</li>
+                    <li><strong>Community Projects:</strong> Enabling local groups to maintain communication without relying on external networks.</li>
+                </ul>
+                <p style="margin-top: 1rem;">LoRa Mesh effectively combines the advantages of long-range communication with the resilience of a decentralized network, making it a powerful tool for various applications.</p>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <p>© 2026 Crystal Coast of NC Mesh. Powered by the community.</p>
+        </div>
+    </footer>
+
+    <!-- Insert your smart canvas animation script asset block directly below here -->
+</body>
+
+</html>

@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MeshCore Default Configuration Guide | NC Mesh</title>
+    <link rel="stylesheet" href="./includes/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+        integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            if (window.innerWidth <= 768) {
+                const dropdownToggles = document.querySelectorAll('.dropdown-toggle');
+
+                dropdownToggles.forEach(toggle => {
+                    toggle.addEventListener('click', (e) => {
+                        // Block direct redirect link if mobile sub-menu drawer is collapsed
+                        e.preventDefault();
+                        const parentLi = toggle.closest('.dropdown');
+
+                        // Toggle active tracking layouts
+                        parentLi.classList.toggle('active');
+                        const targetMenu = parentLi.querySelector('.dropdown-menu');
+
+                        if (targetMenu.style.display === 'block') {
+                            targetMenu.style.display = 'none';
+                        } else {
+                            targetMenu.style.display = 'block';
+                        }
+                    });
+                });
+            }
+
+            // --- 1. Clean Scroll Reveal Effect ---
+            const observerOptions = { root: null, rootMargin: "0px", threshold: 0.1 };
+            const revealObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.opacity = "1";
+                        entry.target.style.transform = "translateY(0)";
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, observerOptions);
+
+            const animatedElements = document.querySelectorAll(".card, .map-placeholder, .hero-content h1, .hero-content p");
+            animatedElements.forEach(el => {
+                el.style.opacity = "0";
+                el.style.transform = "translateY(20px)";
+                el.style.transition = "opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)";
+                revealObserver.observe(el);
+            });
+
+            // --- 2. Seamless Mesh Network Canvas Engine ---
+            const heroSection = document.querySelector(".hero");
+            if (heroSection) {
+                const canvas = document.createElement("canvas");
+                const ctx = canvas.getContext("2d");
+
+                Object.assign(canvas.style, {
+                    position: "absolute", top: "0", left: "0", width: "100%", height: "100%",
+                    zIndex: "0", pointerEvents: "none"
+                });
+                heroSection.style.position = "relative";
+                heroSection.insertBefore(canvas, heroSection.firstChild);
+
+                let points = [];
+                let maxPoints = 110;
+                const maxDist = 165;
+                let mouse = { x: null, y: null, radius: 220 };
+
+                window.addEventListener("mousemove", (e) => {
+                    const rect = heroSection.getBoundingClientRect();
+                    mouse.x = e.clientX - rect.left;
+                    mouse.y = e.clientY - rect.top;
+                });
+
+                window.addEventListener("mouseleave", () => {
+                    mouse.x = null;
+                    mouse.y = null;
+                });
+
+                class MeshNode {
+                    constructor(startX, startY) {
+                        // Accepts coordinates if repositioning on screen resize boundaries
+                        this.x = startX !== undefined ? startX : Math.random() * canvas.width;
+                        this.y = startY !== undefined ? startY : Math.random() * canvas.height;
+                        this.vx = (Math.random() - 0.5) * 0.16;
+                        this.vy = (Math.random() - 0.5) * 0.16;
+                        this.baseRadius = Math.random() * 1.5 + 0.8;
+                        this.radius = this.baseRadius;
+                        this.pulseFactor = Math.random() * Math.PI;
+                        this.depth = Math.random() * 0.5 + 0.3;
+                    }
+                    update() {
+                        this.x += this.vx;
+                        this.y += this.vy;
+
+                        if (this.x < 0) this.x = canvas.width;
+                        if (this.x > canvas.width) this.x = 0;
+                        if (this.y < 0) this.y = canvas.height;
+                        if (this.y > canvas.height) this.y = 0;
+
+                        this.pulseFactor += 0.012;
+                        this.radius = this.baseRadius + Math.sin(this.pulseFactor) * 0.3;
+
+                        if (mouse.x !== null && mouse.y !== null) {
+                            const dx = mouse.x - this.x;
+                            const dy = mouse.y - this.y;
+                            const distance = Math.hypot(dx, dy);
+
+                            if (distance < mouse.radius) {
+                                const force = (mouse.radius - distance) / mouse.radius;
+                                this.x -= (dx / distance) * force * 0.35;
+                                this.y -= (dy / distance) * force * 0.35;
+                            }
+                        }
+                    }
+                    draw() {
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(34, 197, 94, ${this.depth * 0.5})`;
+                        ctx.fill();
+                    }
+                }
+
+                // SMART RESIZE: Scales coordinates instead of wiping arrays
+                function resizeCanvas() {
+                    const oldWidth = canvas.width || heroSection.offsetWidth;
+                    const oldHeight = canvas.height || heroSection.offsetHeight;
+
+                    canvas.width = heroSection.offsetWidth;
+                    canvas.height = heroSection.offsetHeight;
+
+                    const targetPoints = Math.min(Math.floor((canvas.width * canvas.height) / 7500), maxPoints);
+
+                    if (points.length === 0) {
+                        // Initial generation pass on boot up
+                        for (let i = 0; i < targetPoints; i++) {
+                            points.push(new MeshNode());
+                        }
+                    } else {
+                        // Dynamically re-map current coordinate sets safely
+                        points.forEach(p => {
+                            p.x = (p.x / oldWidth) * canvas.width;
+                            p.y = (p.y / oldHeight) * canvas.height;
+                        });
+
+                        // Add or trim nodes smoothly if canvas changes significantly
+                        if (points.length < targetPoints) {
+                            while (points.length < targetPoints) points.push(new MeshNode());
+                        } else if (points.length > targetPoints) {
+                            points.splice(targetPoints);
+                        }
+                    }
+                }
+
+                window.addEventListener("resize", resizeCanvas);
+                resizeCanvas();
+
+                function animateMesh() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                    for (let i = 0; i < points.length; i++) {
+                        points[i].update();
+                        points[i].draw();
+
+                        for (let j = i + 1; j < points.length; j++) {
+                            const dx = points[i].x - points[j].x;
+                            const dy = points[i].y - points[j].y;
+                            const dist = Math.hypot(dx, dy);
+
+                            if (dist < maxDist) {
+                                let alpha = (1 - dist / maxDist) * 0.13 * (points[i].depth * points[j].depth);
+
+                                if (mouse.x !== null && mouse.y !== null) {
+                                    const mDist1 = Math.hypot(mouse.x - points[i].x, mouse.y - points[i].y);
+                                    const mDist2 = Math.hypot(mouse.x - points[j].x, mouse.y - points[j].y);
+                                    if (mDist1 < mouse.radius || mDist2 < mouse.radius) {
+                                        alpha *= 2.0;
+                                    }
+                                }
+
+                                ctx.beginPath();
+                                ctx.moveTo(points[i].x, points[i].y);
+                                ctx.lineTo(points[j].x, points[j].y);
+                                ctx.strokeStyle = `rgba(34, 197, 94, ${alpha})`;
+                                ctx.lineWidth = dist < maxDist * 0.35 ? 0.8 : 0.4;
+                                ctx.stroke();
+
+                                if (Math.random() < 0.00025 && dist < maxDist * 0.6) {
+                                    ctx.beginPath();
+                                    const pct = (Date.now() % 1800) / 1800;
+                                    const px = points[i].x + dx * pct;
+                                    const py = points[i].y + dy * pct;
+                                    ctx.arc(px, py, 1.8, 0, Math.PI * 2);
+                                    ctx.fillStyle = `rgba(34, 197, 94, ${points[i].depth})`;
+                                    ctx.fill();
+                                }
+                            }
+                        }
+                    }
+                    requestAnimationFrame(animateMesh);
+                }
+                animateMesh();
+            }
+
+            // --- 3. Simple Back-To-Top Button ---
+            const topBtn = document.createElement("button");
+            topBtn.innerHTML = '<i class="fa-solid fa-arrow-up"></i>';
+            Object.assign(topBtn.style, {
+                position: "fixed", bottom: "30px", right: "30px", width: "45px", height: "45px",
+                backgroundColor: "#1a1c1e", color: "#3b82f6", border: "1px solid #2a2d31",
+                borderRadius: "50%", cursor: "pointer", display: "none", zIndex: "2000",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.4)", transition: "all 0.3s ease"
+            });
+            document.body.appendChild(topBtn);
+
+            window.addEventListener("scroll", () => {
+                topBtn.style.display = window.scrollY > 400 ? "block" : "none";
+            });
+
+            topBtn.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+            topBtn.addEventListener("mouseenter", () => {
+                topBtn.style.backgroundColor = "rgba(34, 197, 94, 0.1)";
+                topBtn.style.borderColor = "#3b82f6";
+                topBtn.style.boxShadow = "0 0 15px rgba(59, 130, 246, 0.3)";
+            });
+            topBtn.addEventListener("mouseleave", () => {
+                topBtn.style.backgroundColor = "#1a1c1e";
+                topBtn.style.borderColor = "#2a2d31";
+                topBtn.style.boxShadow = "0 4px 12px rgba(0,0,0,0.4)";
+            });
+        });
+    </script>
+</head>
+
+<body>
+
+    <header class="navbar">
+        <div class="container">
+            <!-- Path explicitly updated to target the local directory syntax -->
+            <a href="index.html" class="logo-brand">
+                <img src="./img/CCM_logo-night.png" alt="CC Mesh Logo" class="brand-img">
+                <span class="brand-text"><span style="color: #0395c8;">ccme.sh  </span> Crystal Coast of North Carolina Mesh Network
+            </a>
+            <nav>
+                <ul class="nav-links">
+                    <!-- Meshtastic Dropdown Nesting Menu -->
+                    <li class="dropdown">
+                        <a href="meshtastic.html" class="dropdown-toggle">Meshtastic <i
+                                class="fa-solid fa-chevron-down nav-arrow"></i></a>
+                        <ul class="dropdown-menu">
+                            <li><a href="meshtastic.html"><i class="fa-solid fa-circle-info"></i> Network Info</a></li>
+                            <li><a href="config-meshtastic.html"><i class="fa-solid fa-sliders"></i> Setup Instructions</a>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <!-- MeshCore Dropdown Nesting Menu -->
+                    <li class="dropdown">
+                        <a href="meshcore.html" class="dropdown-toggle">MeshCore <i
+                                class="fa-solid fa-chevron-down nav-arrow"></i></a>
+                        <ul class="dropdown-menu">
+                            <li><a href="meshcore.html"><i class="fa-solid fa-circle-info"></i> Network Info</a></li>
+                            <li><a href="config-meshcore.html"><i class="fa-solid fa-sliders"></i> Setup Instructions</a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Title Section -->
+    <section class="hero">
+        <div class="container hero-content">
+            <h1><span style="color: #3b82f6;">MeshCore</span> Configuration Portal</h1>
+            <p>Step-by-step documentation to provision your radio hardware and hook into local RF relays.</p>
+        </div>
+    </section>
+
+    <section class="guide-section" style="margin-top: 1rem;">
+        <div class="container" style="max-width: 800px;">
+            <div class="card" style="border: 1px solid rgba(220, 38, 38, 0.46); box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.10);">
+                <h4 style="margin-bottom: 1rem; font-size: 1.4rem;">IMPORTANT CAVEAT FOR AMATEUR RADIO OPERATORS</h4>
+                <p>These devices are operated in the 902-928 MHz band with maximum of 1 watt PEP at the antenna when omni directional and when operating directional, 1 watt maximum over all elements of the antenna not to exceed 1 watt ERP at 6 dBi gain, [FCC Part 15 15.247(b) 3,4 and (c)] which has a shared usage with not only Amateur Radio but other unlicensed as well as licensed services on a shared basis. In this shared band, these mesh devices are being operated as unlicensed, low-power devices under FCC Rules Part 15 in the ISM Band or "Industrial, Scientific and Medical Band", and as such, encryption is allowed when operated as a Part 15 unlicensed device. FCC Rules Part 97, which govern Amateur Radio, does not allow encryption, and as a station licensed by the FCC, stations identifying as Amateur Radio stations are not allowed to communicate with unlicensed stations operating in the shared ISM Band. If you are a licensed Amateur Radio operator, pick your ID carefully so that you are not confused for an Amateur Radio station communicating with unlicensed, Part 15 stations.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 1: Web Flasher Guide Accordion -->
+    <section class="guide-section" style="margin-top: 1rem;">
+        <div class="container" style="max-width: 800px;">
+            <div class="accordion-header">
+                <h4 style="margin-bottom: 0; font-size: 1.4rem;">1. Firmware Flashing Guide (meshcore.io/flasher)</h4>
+                <i class="fa-solid fa-chevron-down accordion-icon"></i>
+            </div>
+
+            <div class="accordion-content">
+                <div class="card">
+                    <p>MeshCore handles client nodes and background infrastructure differently. Hardware behavior is
+                        determined entirely by whether you flash the companion or the repeater binary block to the
+                        device chip.</p>
+
+                    <h4><i class="fa-solid fa-window-maximize" style="color: #3b82f6;"></i> Web Serial
+                        Connection Requirements</h4>
+                    <p>Launch a browser supporting Web Serial interface actions (Chrome, Edge, or Brave) and navigate to
+                        the flashing utility workspace: <a href="https://meshcore.io" target="_blank"
+                            rel="noopener noreferrer" style="color: #3b82f6;">meshcore.io/flasher</a>.</p>
+
+                    <h4><i class="fa-solid fa-microchip" style="color: #3b82f6;"></i> Firmware Flash
+                        Procedure</h4>
+                    <ol
+                        style="padding-left: 1.25rem; color: var(--text-muted); line-height: 1.8; margin-bottom: 1.5rem;">
+                        <li style="margin-bottom: 0.5rem;"><strong style="color: var(--text-main);">Hardware
+                                Select:</strong> Connect your LoRa radio to your computer via USB data cable and select
+                            your exact board layout model from the drop-down menu (e.g., Heltec V3/V4, Seeed Studio
+                            SenseCAP, RAK WisBlock).</li>
+                        <li style="margin-bottom: 0.5rem;"><strong style="color: var(--text-main);">Role
+                                Assignment:</strong> Select <code class="settings-value">Companion Bluetooth</code> if
+                            you want the radio to link with your phone app, or select <code
+                                class="settings-value">Repeater</code> if building an unattended infrastructure mast.
+                        </li>
+                        <li style="margin-bottom: 0.5rem;"><strong style="color: var(--text-main);">Wipe &
+                                Flash:</strong> Drop the device into bootloader mode, check the "Erase Flash" flag to
+                            wipe old partition schemes cleanly, and hit Flash to run the environment loader.</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 2: Companion Node App Setup Accordion -->
+    <section class="guide-section" style="margin-top: 1rem;">
+        <div class="container" style="max-width: 800px;">
+            <div class="accordion-header">
+                <h4 style="margin-bottom: 0; font-size: 1.4rem;">2. Companion Node Application Setup</h4>
+                <i class="fa-solid fa-chevron-down accordion-icon"></i>
+            </div>
+            
+            <div class="accordion-content">
+                <div class="card">
+                    <p>Once a radio board is flashed with companion firmware, it will act as a local Bluetooth server to your companion client application.</p>
+                    
+                    <h4><i class="fa-solid fa-bluetooth" style="color: #3b82f6;"></i> Pairing to the Node</h4>
+                    <p>Launch the MeshCore app on your smartphone and tap <span class="settings-value">Connect</span> in the top header window. Select your active hardware from the Bluetooth radio pool list and enter the PIN displayed on the node screen (or fallback to <span class="settings-value">123456</span> for screenless card setups).</p>
+
+                    <h4><i class="fa-solid fa-earth-americas" style="color: #3b82f6;"></i> App Settings -> Radio Region</h4>
+                    <p>Navigate to your core radio configuration screen inside the phone application and lock the baseline region profile to apply standard NC channels automatically:</p>
+                    <ul>
+                        <li>Radio Region Preset: <span class="settings-value">USA/Canada (Recommended)</span></li>
+                        <li>Frequency Configuration: <span class="settings-value">910.525 MHz</span></li>
+                        <li>Bandwidth (BW): <span class="settings-value">62.5 kHz</span></li>
+                        <li>Spreading Factor (SF): <span class="settings-value">7</span></li>
+                        <li>Coding Rate (CR): <span class="settings-value">5</span></li>
+                    </ul>
+
+                    <h4><i class="fa-solid fa-circle-nodes" style="color: #3b82f6;"></i> App Settings -> Channel List</h4>
+                    <p>Navigate to the Channels tab and add or join the following regional channels to hook into the community grid:</p>
+                    <ul>
+                        <li>Group Chat: <span class="settings-value">#ncmesh</span></li>
+                        <li>Automated Bots: <span class="settings-value">#bot</span></li>
+                        <li>Weather Telemetry: <span class="settings-value">#wx</span></li>
+                        <li>Path & DX Testing: <span class="settings-value">#test</span></li>
+                    </ul>
+
+                    <h4><i class="fa-solid fa-user-tag" style="color: #3b82f6;"></i> App Settings -> Display Name</h4>
+                    <p>Locate the user node description card block to name your local device so tracking utilities can catalog signal hops across the network canvas:</p>
+                    <ul>
+                        <li>Display Name: <span class="settings-value">Name your node whatever you want (Emojis supported 🛰️)</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- SECTION 3: Repeater Configuration Accordion -->
+    <section class="guide-section" style="margin-top: 1rem;">
+        <div class="container" style="max-width: 800px;">
+            <div class="accordion-header">
+                <h4 style="margin-bottom: 0; font-size: 1.4rem;">3. Standalone Infrastructure Repeater Setup via Web
+                    Configurator</h4>
+                <i class="fa-solid fa-chevron-down accordion-icon"></i>
+            </div>
+
+            <div class="accordion-content">
+                <div class="card">
+                    <p>Flashed with the specialized <code class="settings-value">Repeater</code> firmware build, these
+                        nodes operate completely unattended. They turn off power-hungry smartphone Bluetooth chips to
+                        optimize processing loops and maximize battery retention on remote solar infrastructure masts.
+                    </p>
+
+                    <h4><i class="fa-solid fa-plug" style="color: #3b82f6;"></i> Local USB Serial
+                        Configuration Setup</h4>
+                    <p>Because repeater builds shut down Bluetooth beacons, you cannot configure them through the phone
+                        app. Instead, you change settings directly over a wired connection right after flashing:</p>
+                    <ol
+                        style="padding-left: 1.25rem; color: var(--text-muted); line-height: 1.8; margin-bottom: 1.5rem;">
+                        <li style="margin-bottom: 0.5rem;"><strong style="color: var(--text-main);">Launch
+                                Configurator:</strong> Keep the device connected to your computer via USB data cable. On
+                            the flashing webpage (<a href="https://meshcore.io" target="_blank"
+                                rel="noopener noreferrer" style="color: #3b82f6;">meshcore.io/flasher</a>), tap the active <span
+                                class="settings-value">Configure Device</span> button that loads right after a
+                            successful flash (or use the standalone web portal at <code
+                                class="settings-value">config.meshcore.io</code>).</li>
+                        <li style="margin-bottom: 0.5rem;"><strong style="color: var(--text-main);">Lock Local
+                                Region:</strong> Tap the Serial Port connection window and locate the regional
+                            parameters card block. Set the dropdown target to <span
+                                class="settings-value">USA/Canada</span> to load your 910.525 MHz frequency defaults
+                            automatically.</li>
+                        <li style="margin-bottom: 0.5rem;"><strong style="color: var(--text-main);">Set Node
+                                Identifier:</strong> Under the system settings block, name your node whatever you want.
+                            You are completely free to use nicknames, custom callsigns, or functional descriptors
+                            (Emojis are supported 🌲).</li>
+                        <li style="margin-bottom: 0.5rem;"><strong style="color: var(--text-main);">Save &
+                                Commit:</strong> Click <span class="settings-value">Save Settings</span> to commit your
+                            variables directly to the hardware memory bank, then safely unplug the board for deployment.
+                        </li>
+                    </ol>
+
+                    <h4><i class="fa-solid fa-tower-broadcast" style="color: #3b82f6;"></i> Placement & Node
+                        Deployment Best Practices</h4>
+                    <p>MeshCore relies on dedicated physical infrastructure rather than client-device signal flooding.
+                        Follow these hardware rules to ensure smooth traffic flow across counties:</p>
+                    <ol style="padding-left: 1.25rem; color: var(--text-muted); line-height: 1.8;">
+                        <li style="margin-bottom: 0.5rem;"><strong style="color: var(--text-main);">Line-of-Sight
+                                Placement:</strong> Secure your repeater node at high elevations—preferably on chimneys,
+                            poles, or in clear attics. Even modest elevation shifts completely change path discovery
+                            results.</li>
+                        <li style="margin-bottom: 0.5rem;"><strong style="color: var(--text-main);">Solar
+                                Resilience:</strong> If deploying a remote solar-recharged enclosure, pair your device
+                            with an adequate battery capacity buffer to sustain 24/7 directed-path routines over rainy
+                            winter days.</li>
+                    </ol>
+
+                    <h4 style="color:#3b82f6;"><i class="fa-solid fa-comment-dots"></i> Verify Connection
+                    </h4>
+                    <p style="margin-bottom: 0;">Once deployed, check your nearby companion nodes to confirm they can
+                        successfully route text messages through your new repeater's custom node ID marker.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="hero-buttons-section" style="padding: 1rem 0 1.5rem;">
+        <div class="container">
+            <div class="hero-buttons" style="margin-top: 0;">
+                <a href="lora.html" class="btn btn-secondary" style="background-color: #0395c8 !important; color: #ffffff !important; border-color: #0395c8;">What is "LoRa"?</a>
+            </div>
+            <div class="hero-buttons" style="margin-top: 0.75rem;">
+                <a href="meshtastic-vs-meshcore.html" class="btn btn-secondary" style="background-color: #0f766e !important; color: #ffffff !important; border-color: #0f766e;">Meshtastic vs MeshCore</a>
+            </div>
+            <div class="hero-buttons" style="margin-top: 0.75rem;">
+                <a href="meshtastic.html" class="btn btn-primary">Explore Meshtastic</a>
+                <a href="meshcore.html" class="btn btn-secondary" style="background-color: #3b82f6 !important; color: #000000 !important; border-color: #3b82f6;">Explore MeshCore</a>
+            </div>
+            <div class="hero-buttons" style="margin-top: 0.75rem;">
+                <a href="config-meshtastic.html" class="btn btn-primary">Configure Meshtastic</a>
+                <a href="#" class="btn btn-secondary" aria-disabled="true" tabindex="-1" style="background-color: #1e3a8a !important; color: #a3a3a3 !important; border-color: #1e3a8a !important; pointer-events: none; cursor: not-allowed; opacity: 0.8;">Configure MeshCore</a>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <p>© 2026 Crystal Coast of NC Mesh. Powered by the community.</p>
+        </div>
+    </footer>
+
+    <!-- Toggle Logic Script Execution -->
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const accordions = document.querySelectorAll('.accordion-header');
+            accordions.forEach(header => {
+                header.addEventListener('click', () => {
+                    const parentSection = header.closest('.guide-section');
+                    parentSection.classList.toggle('active');
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

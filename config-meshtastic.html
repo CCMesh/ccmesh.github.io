@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meshtastic Default Configuration Guide | CCMesh</title>
+    <link rel="stylesheet" href="./includes/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+        integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            if (window.innerWidth <= 768) {
+                const dropdownToggles = document.querySelectorAll('.dropdown-toggle');
+
+                dropdownToggles.forEach(toggle => {
+                    toggle.addEventListener('click', (e) => {
+                        // Block direct redirect link if mobile sub-menu drawer is collapsed
+                        e.preventDefault();
+                        const parentLi = toggle.closest('.dropdown');
+
+                        // Toggle active tracking layouts
+                        parentLi.classList.toggle('active');
+                        const targetMenu = parentLi.querySelector('.dropdown-menu');
+
+                        if (targetMenu.style.display === 'block') {
+                            targetMenu.style.display = 'none';
+                        } else {
+                            targetMenu.style.display = 'block';
+                        }
+                    });
+                });
+            }
+
+            // --- 1. Clean Scroll Reveal Effect ---
+            const observerOptions = { root: null, rootMargin: "0px", threshold: 0.1 };
+            const revealObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.opacity = "1";
+                        entry.target.style.transform = "translateY(0)";
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, observerOptions);
+
+            const animatedElements = document.querySelectorAll(".card, .map-placeholder, .hero-content h1, .hero-content p");
+            animatedElements.forEach(el => {
+                el.style.opacity = "0";
+                el.style.transform = "translateY(20px)";
+                el.style.transition = "opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)";
+                revealObserver.observe(el);
+            });
+
+            // --- 2. Seamless Mesh Network Canvas Engine ---
+            const heroSection = document.querySelector(".hero");
+            if (heroSection) {
+                const canvas = document.createElement("canvas");
+                const ctx = canvas.getContext("2d");
+
+                Object.assign(canvas.style, {
+                    position: "absolute", top: "0", left: "0", width: "100%", height: "100%",
+                    zIndex: "0", pointerEvents: "none"
+                });
+                heroSection.style.position = "relative";
+                heroSection.insertBefore(canvas, heroSection.firstChild);
+
+                let points = [];
+                let maxPoints = 110;
+                const maxDist = 165;
+                let mouse = { x: null, y: null, radius: 220 };
+
+                window.addEventListener("mousemove", (e) => {
+                    const rect = heroSection.getBoundingClientRect();
+                    mouse.x = e.clientX - rect.left;
+                    mouse.y = e.clientY - rect.top;
+                });
+
+                window.addEventListener("mouseleave", () => {
+                    mouse.x = null;
+                    mouse.y = null;
+                });
+
+                class MeshNode {
+                    constructor(startX, startY) {
+                        // Accepts coordinates if repositioning on screen resize boundaries
+                        this.x = startX !== undefined ? startX : Math.random() * canvas.width;
+                        this.y = startY !== undefined ? startY : Math.random() * canvas.height;
+                        this.vx = (Math.random() - 0.5) * 0.16;
+                        this.vy = (Math.random() - 0.5) * 0.16;
+                        this.baseRadius = Math.random() * 1.5 + 0.8;
+                        this.radius = this.baseRadius;
+                        this.pulseFactor = Math.random() * Math.PI;
+                        this.depth = Math.random() * 0.5 + 0.3;
+                    }
+                    update() {
+                        this.x += this.vx;
+                        this.y += this.vy;
+
+                        if (this.x < 0) this.x = canvas.width;
+                        if (this.x > canvas.width) this.x = 0;
+                        if (this.y < 0) this.y = canvas.height;
+                        if (this.y > canvas.height) this.y = 0;
+
+                        this.pulseFactor += 0.012;
+                        this.radius = this.baseRadius + Math.sin(this.pulseFactor) * 0.3;
+
+                        if (mouse.x !== null && mouse.y !== null) {
+                            const dx = mouse.x - this.x;
+                            const dy = mouse.y - this.y;
+                            const distance = Math.hypot(dx, dy);
+
+                            if (distance < mouse.radius) {
+                                const force = (mouse.radius - distance) / mouse.radius;
+                                this.x -= (dx / distance) * force * 0.35;
+                                this.y -= (dy / distance) * force * 0.35;
+                            }
+                        }
+                    }
+                    draw() {
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(34, 197, 94, ${this.depth * 0.5})`;
+                        ctx.fill();
+                    }
+                }
+
+                // SMART RESIZE: Scales coordinates instead of wiping arrays
+                function resizeCanvas() {
+                    const oldWidth = canvas.width || heroSection.offsetWidth;
+                    const oldHeight = canvas.height || heroSection.offsetHeight;
+
+                    canvas.width = heroSection.offsetWidth;
+                    canvas.height = heroSection.offsetHeight;
+
+                    const targetPoints = Math.min(Math.floor((canvas.width * canvas.height) / 7500), maxPoints);
+
+                    if (points.length === 0) {
+                        // Initial generation pass on boot up
+                        for (let i = 0; i < targetPoints; i++) {
+                            points.push(new MeshNode());
+                        }
+                    } else {
+                        // Dynamically re-map current coordinate sets safely
+                        points.forEach(p => {
+                            p.x = (p.x / oldWidth) * canvas.width;
+                            p.y = (p.y / oldHeight) * canvas.height;
+                        });
+
+                        // Add or trim nodes smoothly if canvas changes significantly
+                        if (points.length < targetPoints) {
+                            while (points.length < targetPoints) points.push(new MeshNode());
+                        } else if (points.length > targetPoints) {
+                            points.splice(targetPoints);
+                        }
+                    }
+                }
+
+                window.addEventListener("resize", resizeCanvas);
+                resizeCanvas();
+
+                function animateMesh() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                    for (let i = 0; i < points.length; i++) {
+                        points[i].update();
+                        points[i].draw();
+
+                        for (let j = i + 1; j < points.length; j++) {
+                            const dx = points[i].x - points[j].x;
+                            const dy = points[i].y - points[j].y;
+                            const dist = Math.hypot(dx, dy);
+
+                            if (dist < maxDist) {
+                                let alpha = (1 - dist / maxDist) * 0.13 * (points[i].depth * points[j].depth);
+
+                                if (mouse.x !== null && mouse.y !== null) {
+                                    const mDist1 = Math.hypot(mouse.x - points[i].x, mouse.y - points[i].y);
+                                    const mDist2 = Math.hypot(mouse.x - points[j].x, mouse.y - points[j].y);
+                                    if (mDist1 < mouse.radius || mDist2 < mouse.radius) {
+                                        alpha *= 2.0;
+                                    }
+                                }
+
+                                ctx.beginPath();
+                                ctx.moveTo(points[i].x, points[i].y);
+                                ctx.lineTo(points[j].x, points[j].y);
+                                ctx.strokeStyle = `rgba(34, 197, 94, ${alpha})`;
+                                ctx.lineWidth = dist < maxDist * 0.35 ? 0.8 : 0.4;
+                                ctx.stroke();
+
+                                if (Math.random() < 0.00025 && dist < maxDist * 0.6) {
+                                    ctx.beginPath();
+                                    const pct = (Date.now() % 1800) / 1800;
+                                    const px = points[i].x + dx * pct;
+                                    const py = points[i].y + dy * pct;
+                                    ctx.arc(px, py, 1.8, 0, Math.PI * 2);
+                                    ctx.fillStyle = `rgba(34, 197, 94, ${points[i].depth})`;
+                                    ctx.fill();
+                                }
+                            }
+                        }
+                    }
+                    requestAnimationFrame(animateMesh);
+                }
+                animateMesh();
+            }
+
+            // --- 3. Simple Back-To-Top Button ---
+            const topBtn = document.createElement("button");
+            topBtn.innerHTML = '<i class="fa-solid fa-arrow-up"></i>';
+            Object.assign(topBtn.style, {
+                position: "fixed", bottom: "30px", right: "30px", width: "45px", height: "45px",
+                backgroundColor: "#1a1c1e", color: "#22c55e", border: "1px solid #2a2d31",
+                borderRadius: "50%", cursor: "pointer", display: "none", zIndex: "2000",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.4)", transition: "all 0.3s ease"
+            });
+            document.body.appendChild(topBtn);
+
+            window.addEventListener("scroll", () => {
+                topBtn.style.display = window.scrollY > 400 ? "block" : "none";
+            });
+
+            topBtn.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+            topBtn.addEventListener("mouseenter", () => {
+                topBtn.style.backgroundColor = "rgba(34, 197, 94, 0.1)";
+                topBtn.style.borderColor = "#22c55e";
+                topBtn.style.boxShadow = "0 0 15px rgba(34, 197, 94, 0.3)";
+            });
+            topBtn.addEventListener("mouseleave", () => {
+                topBtn.style.backgroundColor = "#1a1c1e";
+                topBtn.style.borderColor = "#2a2d31";
+                topBtn.style.boxShadow = "0 4px 12px rgba(0,0,0,0.4)";
+            });
+            // --- 5. Clean Accordion Expansion Toggle Script ---
+            const accordions = document.querySelectorAll('.accordion-header');
+
+            accordions.forEach(header => {
+                header.addEventListener('click', () => {
+                    const parentSection = header.closest('.guide-section');
+
+                    // Toggles class to kick off the custom CSS smooth height and opacity sliders
+                    parentSection.classList.toggle('active');
+                });
+            });
+        });
+    </script>
+</head>
+
+<body>
+
+    <header class="navbar">
+        <div class="container">
+            <!-- Path explicitly updated to target the local directory syntax -->
+            <a href="index.html" class="logo-brand">
+                <img src="./img/CCM_logo-night.png" alt="CC Mesh Logo" class="brand-img">
+                <span class="brand-text"><span style="color: #0395c8;">ccme.sh  </span> Crystal Coast of North Carolina Mesh Network
+            </a>
+            <nav>
+                <ul class="nav-links">
+                    <!-- Meshtastic Dropdown Nesting Menu -->
+                    <li class="dropdown">
+                        <a href="meshtastic.html" class="dropdown-toggle">Meshtastic <i
+                                class="fa-solid fa-chevron-down nav-arrow"></i></a>
+                        <ul class="dropdown-menu">
+                            <li><a href="meshtastic.html"><i class="fa-solid fa-circle-info"></i> Network Info</a></li>
+                            <li><a href="config-meshtastic.html"><i class="fa-solid fa-sliders"></i> Setup Instructions</a>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <!-- MeshCore Dropdown Nesting Menu -->
+                    <li class="dropdown">
+                        <a href="meshcore.html" class="dropdown-toggle">MeshCore <i
+                                class="fa-solid fa-chevron-down nav-arrow"></i></a>
+                        <ul class="dropdown-menu">
+                            <li><a href="meshcore.html"><i class="fa-solid fa-circle-info"></i> Network Info</a></li>
+                            <li><a href="config-meshcore.html"><i class="fa-solid fa-sliders"></i> Setup Instructions</a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Title Section -->
+    <section class="hero">
+        <div class="container hero-content">
+            <h1><span style="color: #22c55e;">Meshtastic</span> Configuration Portal</h1>
+            <p>Step-by-step documentation to provision your radio hardware, hook into local RF relays, or bridge gaps
+                using the private NCMesh MQTT backbone.</p>
+        </div>
+    </section>
+
+    <section class="guide-section" style="margin-top: 1rem;">
+        <div class="container" style="max-width: 800px;">
+            <div class="card" style="border: 1px solid rgba(220, 38, 38, 0.46); box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.10);">
+                <h4 style="margin-bottom: 1rem; font-size: 1.4rem;">IMPORTANT CAVEAT FOR AMATEUR RADIO OPERATORS</h4>
+                <p>You will find that one of the parameters is listed under <span class="settings-value">Settings &gt; User</span> for <span class="settings-value">Amateur Radio</span>. Even if you are a licensed Amateur Radio operator, the suggested setting is <span class="settings-value">OFF</span>. These devices are operated in the 902-928 MHz band with maximum of 1 watt PEP at the antenna when omni directional and when operating directional, 1 watt maximum over all elements of the antenna not to exceed 1 watt ERP at 6 dBi gain, [FCC Part 15 15.247(b) 3,4 and (c)] which has a shared usage with not only Amateur Radio but other unlicensed as well as licensed services on a shared basis. In this shared band, these mesh devices are being operated as unlicensed, low-power devices under FCC Rules Part 15 in the ISM Band or "Industrial, Scientific and Medical Band", and as such, encryption is allowed when operated as a Part 15 unlicensed device. FCC Rules Part 97, which govern Amateur Radio, does not allow encryption, and as a station licensed by the FCC, stations identifying as Amateur Radio stations are not allowed to communicate with unlicensed stations operating in the shared ISM Band. If you are a licensed Amateur Radio operator, pick your ID carefully so that you are not confused for an Amateur Radio station communicating with unlicensed, Part 15 stations.</p>
+            </div>
+        </div>
+    </section>
+
+        <!-- SECTION: Meshtastic Firmware Flashing Accordion -->
+    <section class="guide-section" style="margin-top: 1rem;">
+        <div class="container" style="max-width: 800px;">
+            <!-- Interactive Header Trigger Box -->
+            <div class="accordion-header">
+                <h4 style="margin-bottom: 0; font-size: 1.4rem;">Firmware Flashing Guide (flasher.meshtastic.org)</h4>
+                <i class="fa-solid fa-chevron-down accordion-icon"></i>
+            </div>
+            
+            <!-- Collapsible Content Holder -->
+            <div class="accordion-content">
+                <div class="card">
+                    <p>Before configuring application software, your radio hardware must be flashed with the correct Meshtastic device binary. Wiping alternative or stock factory software ensures a clean install.</p>
+                    
+                    <h4><i class="fa-solid fa-microchip" style="color: var(--accent-green);"></i> 1. USB Driver Prerequisites</h4>
+                    <p>To establish a clean local serial link over a wired connection, verify your machine has the proper UART hardware bridge controllers installed:</p>
+                    <ul>
+                        <li>Silicon Labs Core Bridge: <span class="settings-value">CP210X USB-to-UART Drivers</span></li>
+                        <li>WCH Manufacturing Bridge: <span class="settings-value">CH340 / CH341 Drivers</span></li>
+                    </ul>
+                    <span class="settings-warning">WARNING: Use a high-quality USB data cable! Cheap charging cables lack data lines and will cause connection timeouts.</span>
+
+                    <h4><i class="fa-solid fa-window-maximize" style="color: var(--accent-green);"></i> 2. Web Serial Flasher Procedure</h4>
+                    <p>Connect your radio board to your computer via USB data cable, open a browser natively supporting Web Serial (Chrome, Edge, or Brave), and navigate to: <a href="https://meshtastic.org" target="_blank" rel="noopener noreferrer">flasher.meshtastic.org</a>.</p>
+                    <ol style="padding-left: 1.25rem; color: var(--text-muted); line-height: 1.8; margin-bottom: 1.5rem;">
+                        <li style="margin-bottom: 0.5rem;"><strong style="color: var(--text-main);">Detect Hardware:</strong> Select your specific device model from the target device dropdown list (e.g., Heltec V3, LilyGO T-Beam, Seeed Xiao).</li>
+                        <li style="margin-bottom: 0.5rem;"><strong style="color: var(--text-main);">Firmware Selection:</strong> Choose the latest <span class="settings-value">Stable</span> firmware version release available for your specific chip architecture.</li>
+                        <li style="margin-bottom: 0.5rem;"><strong style="color: var(--text-main);">Wipe Installation:</strong> Turn on the <span class="settings-value">Wipe and Install</span> (Erase Flash) option checkbox. This clears old corruption data blocks from internal memory.</li>
+                        <li style="margin-bottom: 0.5rem;"><strong style="color: var(--text-main);">Execute Flash:</strong> Click the flash button tool, choose your device’s COM port from the browser window popup, and wait for the installer to report completion.</li>
+                    </ol>
+
+                    <h4><i class="fa-solid fa-triangle-exclamation" style="color: var(--accent-green);"></i> 3. Troubleshooting DFU &amp; Bootloader Issues</h4>
+                    <p>If the web installer utility reports failing connections or cannot locate your target serial link port, manually force your board layout into flashing mode:</p>
+                    <ul>
+                        <li>ESP32 Targets (Heltec V3): <span class="settings-value">Hold Boot -> Press Reset -> Release Boot</span></li>
+                        <li>nRF52 Targets (T-Echo): <span class="settings-value">Double-click the Reset button rapidly</span></li>
+                    </ul>
+                    <span class="settings-warning">WARNING: Do not disconnect or unplug the hardware node until the webpage completes the final system reboot phase!</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Connect to the Network Section -->
+    <section class="guide-section" style="margin-top: 1rem;">
+        <div class="container" style="max-width: 800px;">
+            <div class="accordion-header">
+                <h4 style="margin-bottom: 0; font-size: 1.4rem;">Connect to the Network (Quick Setup Guide)</h4>
+                <i class="fa-solid fa-chevron-down accordion-icon"></i>
+            </div>
+
+            <div class="accordion-content">
+                <div class="card">
+                    <p>CCMesh uses the default LongFast channel and settings, so that if you were to buy a radio and do
+                        nothing but configure the country, you could connect to the mesh and start talking (near zero
+                        configuration required).</p>
+                    <p>The catch is that you need node(s) within RF range of you that you can connect to the mesh
+                        through. If you follow this Quick Setup Guide and you don't see a lot of other nodes around you
+                        within a few hours, please use the detailed setup guide instead (it will help you get connected
+                        through MQTT).</p>
+
+                    <h4><i class="fa-solid fa-radio" style="color: var(--accent-green);"></i> 1. Get a Meshtastic Radio
+                    </h4>
+                    <p>Review standard pricing tiers and device configurations to pick the right radio hardware layout
+                        for your deployment footprint:</p>
+                    <ul>
+                        <li>DIY Bare Board Option: <span class="settings-value">~$35 (Build it yourself)</span></li>
+                        <li>LILYGO T-Echo Profile: <span class="settings-value">~$70 (Ready out of the box)</span></li>
+                        <li>Pocket Compact Node: <span class="settings-value">T1000-E (Great for EDC)</span></li>
+                        <li>Pre-Built Battery Node: <span class="settings-value">$50 – $100 (Etsy/eBay with 3D printed
+                                cases)</span></li>
+                        <li>Pre-Built Solar Node: <span class="settings-value">$100 – $200 (Recommended for high outdoor
+                                mounts)</span></li>
+                    </ul>
+
+                    <h4><i class="fa-solid fa-mobile-screen-button" style="color: var(--accent-green);"></i> 2. Download
+                        App &amp; Connect</h4>
+                    <p>Once your hardware target is secured, initialize your smartphone interface link over Bluetooth
+                        channels:</p>
+                    <ol style="padding-left: 1.25rem; color: var(--text-muted); line-height: 1.8; margin-bottom: 0;">
+                        <li style="margin-bottom: 0.5rem;"><strong style="color: var(--text-main);">Software
+                                Download:</strong> Install the official Meshtastic application engine on your iPhone or
+                            Android phone device.</li>
+                        <li style="margin-bottom: 0.5rem;"><strong style="color: var(--text-main);">Bluetooth
+                                Sync:</strong> Power up your node device, turn on your mobile phone's Bluetooth
+                            parameters, and pair them together inside the software screen.</li>
+                        <li style="margin-bottom: 0.5rem;"><strong style="color: var(--accent-green);">Say Hi:</strong>
+                            Open up the active app workspace and send out a message to see who is within range!</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- Detailed iOS Guide -->
+    <section class="guide-section" style="margin-top: 1rem;">
+        <div class="container" style="max-width: 800px;">
+            <!-- Interactive Header Trigger Box -->
+            <div class="accordion-header">
+                <h4 style="margin-bottom: 0; font-size: 1.4rem;">Detailed Setup Guide for Apple/iOS</h4>
+                <i class="fa-solid fa-chevron-down accordion-icon"></i>
+            </div>
+
+            <!-- Collapsible Content Holder -->
+            <div class="accordion-content">
+                <div class="card">
+                    <p><strong>Step 1:</strong> Get a Meshtastic Radio (Review options under Quick Setup Guide above).
+                    </p>
+                    <p><strong>Step 2:</strong> Download the Meshtastic App on your iOS device. Open the app and click
+                        Bluetooth at the bottom of the app. Find your radio in the list and click on it. Enter the PIN
+                        shown onscreen, or 123456 if your node doesn't have a screen.</p>
+                    <p><strong>Step 3:</strong> If you see UNSET (region), click on it and select "United States" (the
+                        device will reboot).</p>
+
+                    <h4><i class="fa-solid fa-wave-square" style="color: var(--accent-green);"></i> Settings -> LoRa
+                    </h4>
+                    <ul>
+                        <li>Region: <span class="settings-value">United States</span></li>
+                        <li>Use Preset: <span class="settings-value">on</span></li>
+                        <li>Presets: <span class="settings-value">LongFast</span></li>
+                        <li>Ignore MQTT: <span class="settings-value">off</span></li>
+                        <li>OK to MQTT: <span class="settings-value">on</span></li>
+                    </ul>
+                    <span class="settings-warning">WARNING: If 'Ignore MQTT' is on or 'OK to MQTT' is off, then you may
+                        only see half of conversations!</span>
+
+                    <ul style="margin-top: 0.5rem;">
+                        <li>Transmit Enabled: <span class="settings-value">on</span></li>
+                        <li>Number of hops: <span class="settings-value">5-7</span></li>
+                        <li>Frequency Slot: <span class="settings-value">0</span></li>
+                        <li>RX Boosted Gain: <span class="settings-value">On</span></li>
+                        <li>Frequency override: <span class="settings-value">0</span></li>
+                        <li>Transmit power: <span class="settings-value">30dBm</span></li>
+                    </ul>
+                    <span class="settings-warning">WARNING: Transmit dBm varies from device to device. Please check your
+                        hardware manufacturer's specifications for more details!</span>
+
+                    <h4><i class="fa-solid fa-circle-nodes" style="color: var(--accent-green);"></i> Settings ->
+                        Channels</h4>
+                    <p>Click on Primary Channel. Do not modify channel details. Ensure settings match:</p>
+                    <ul>
+                        <li>Positions Enabled: <span class="settings-value">on</span></li>
+                        <li>Approximate Location: <span class="settings-value">0.9mi</span></li>
+                        <li>MQTT Uplink Enabled: <span class="settings-value">on</span></li>
+                        <li>MQTT Downlink Enabled: <span class="settings-value">on</span></li>
+                    </ul>
+
+                    <p style="margin: 1.5rem 0 0.5rem 0;">Click <strong>Add Channel</strong>:</p>
+                    <ul>
+                        <li>Name: <span class="settings-value">NCMesh</span></li>
+                    </ul>
+                    <span class="settings-warning">WARNING: Name is case sensitive!</span>
+
+                    <ul style="margin-top: 0.5rem;">
+                        <li>Key Size: <span class="settings-value">Default</span></li>
+                        <li>Key: <span class="settings-value">AQ==</span></li>
+                        <span class="settings-warning">WARNING: PSK is case sensitive!</span>
+                        <li>Channel Role: <span class="settings-value">Secondary</span></li>
+                        <li>Allow Position Requests: <span class="settings-value">Off</span></li>
+                        <li>MQTT Uplink Enabled: <span class="settings-value">on</span></li>
+                        <li>MQTT Downlink Enabled: <span class="settings-value">on</span></li>
+                    </ul>
+
+                    <h4><i class="fa-solid fa-user-gear" style="color: var(--accent-green);"></i> Settings -> User</h4>
+                    <ul>
+                        <li>Long name: <span class="settings-value">Name your node (up to 36 characters)</span></li>
+                        <li>Short name: <span class="settings-value">Short name for your node (up to 4 characters or 1
+                                emoji)</span></li>
+                        <li>Licensed Operator (HAM mode): <span class="settings-value">Off</span></li>
+                    </ul>
+
+                    <h4><i class="fa-solid fa-toggle-on" style="color: var(--accent-green);"></i> Settings -> Device
+                    </h4>
+                    <ul>
+                        <li>Mobile / pocket / EDC node: <span class="settings-value">Client</span> or <span
+                                class="settings-value">Client Mute</span></li>
+                        <li>Stationary node poorly placed (inside house): <span class="settings-value">Client
+                                Mute</span></li>
+                        <li>Stationary node well placed (2nd floor, roof, attic): <span
+                                class="settings-value">Client</span></li>
+                        <li>Multiple nodes for camping / poor cell / woods: <span class="settings-value">Client</span>
+                        </li>
+                        <li>Node placed on an elevated mountain peak or tower: <span
+                                class="settings-value">Router</span></li>
+                        <li>Rebroadcast Mode: <span class="settings-value">All</span></li>
+                        <li>Node Info Broadcast Interval: <span class="settings-value">One Hour</span></li>
+                    </ul>
+
+                    <h4><i class="fa-solid fa-location-crosshairs" style="color: var(--accent-green);"></i> Settings ->
+                        Position</h4>
+                    <ul>
+                        <li>Broadcast Interval: <span class="settings-value">60 minutes</span></li>
+                        <li>Smart Position: <span class="settings-value">on</span></li>
+                        <li>Minimum Interval: <span class="settings-value">30 Minutes</span></li>
+                        <li>Minimum Distance: <span class="settings-value">100</span></li>
+                        <li>Device GPS: <span class="settings-value">Enabled</span></li>
+                        <li>Update Interval: <span class="settings-value">30 Minutes</span></li>
+                        <li>Position Flags: <span class="settings-value">Enable altitude, satellites, and timestamp
+                                only</span></li>
+                    </ul>
+
+                    <h4><i class="fa-solid fa-cloud-arrow-up" style="color: var(--accent-green);"></i> Settings -> MQTT
+                    </h4>
+                    <ul>
+                        <li>Enabled: <span class="settings-value">on</span></li>
+                        <li>MQTT Client Proxy: <span class="settings-value">on</span></li>
+                        <li>Encryption Enabled: <span class="settings-value">on</span></li>
+                        <li>JSON Enabled: <span class="settings-value">off</span></li>
+                        <li>Map Report, Enabled: <span class="settings-value">on</span></li>
+                        <li>Map Publish Interval: <span class="settings-value">One Hour</span></li>
+                        <li>Approximate location: <span class="settings-value">0.9mi</span></li>
+                        <li>Root Topic: <span class="settings-value">msh/US</span></li>
+                        <li>Address: <span class="settings-value">mqtt.ncmesh.net</span></li>
+                        <li>Username: <span class="settings-value">meshdev</span></li>
+                        <li>Password: <span class="settings-value">large4cats</span></li>
+                        <li>TLS Enabled: <span class="settings-value">off</span></li>
+                    </ul>
+
+                    <h4 style="color: var(--accent-green);"><i class="fa-solid fa-comment-dots"></i> Say Hi!</h4>
+                    <p style="margin-bottom: 0;">Open the app -> Click Messages -> Click Channels -> Click Primary
+                        Channel or NCMesh -> Type a message and say hello to the network!</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- Detailed Android Guide -->
+    <section class="guide-section" style="margin-top: 1rem;">
+        <div class="container" style="max-width: 800px;">
+            <!-- Interactive Header Trigger Box -->
+            <div class="accordion-header">
+                <h4 style="margin-bottom: 0; font-size: 1.4rem;">Detailed Setup Guide for Android</h4>
+                <i class="fa-solid fa-chevron-down accordion-icon"></i>
+            </div>
+
+            <!-- Collapsible Content Holder -->
+            <div class="accordion-content">
+                <div class="card">
+                    <p><strong>Step 1:</strong> Get a Meshtastic Radio (Review options under Quick Setup Guide above).
+                    </p>
+                    <p><strong>Step 2:</strong> Download the Meshtastic App on your Android device. Pair your radio to
+                        your phone with Bluetooth, then launch the Meshtastic application.</p>
+                    <p><strong>Step 3:</strong> Tap the <span class="settings-value">+</span> sign at the lower right
+                        corner, then click allow. Find your radio in the list and click on it. Enter the PIN shown
+                        onscreen, or <span class="settings-value">123456</span> if your node doesn't have a screen.
+                        Click allow when prompted for notifications.</p>
+                    <p><strong>Step 4:</strong> If you see UNSET (region), click on it and select "United States" (the
+                        device will reboot). Click the three dots at the upper right corner and click on Radio
+                        configuration.</p>
+
+                    <h4><i class="fa-solid fa-user-gear" style="color: var(--accent-green);"></i> User</h4>
+                    <ul>
+                        <li>Long name: <span class="settings-value">Name your node (up to 36 characters)</span></li>
+                        <li>Short name: <span class="settings-value">Short name for your node (up to 4
+                                characters)</span></li>
+                        <li>Licensed Operator (HAM mode): <span class="settings-value">Off</span></li>
+                    </ul>
+                    <p style="margin-top: 0.5rem; color: var(--accent-green);">Click send, click close, and click the
+                        back arrow at the top.</p>
+
+                    <h4><i class="fa-solid fa-circle-nodes" style="color: var(--accent-green);"></i> Channels</h4>
+                    <p>Click on <strong>LongFast</strong>. Do not modify channel details. Verify settings:</p>
+                    <ul>
+                        <li>Uplink: <span class="settings-value">Enabled</span></li>
+                        <li>Downlink: <span class="settings-value">Enabled</span></li>
+                        <li>Position: <span class="settings-value">Enabled</span></li>
+                        <li>Precise location: <span class="settings-value">Disabled</span></li>
+                        <li>Location Slider: <span class="settings-value">Set to 1.8mi (or larger if desired)</span>
+                        </li>
+                    </ul>
+
+                    <p style="margin: 1.5rem 0 0.5rem 0;">Click <strong>+</strong> to add a secondary channel:</p>
+                    <ul>
+                        <li>Channel Name (case sensitive): <span class="settings-value">NCMesh</span></li>
+                    </ul>
+                    <span class="settings-warning">WARNING: Name is case sensitive!</span>
+
+                    <ul style="margin-top: 0.5rem;">
+                        <li>PSK (case sensitive): <span class="settings-value">AQ==</span></li>
+                    </ul>
+                    <span class="settings-warning">WARNING: PSK is case sensitive!</span>
+
+                    <ul style="margin-top: 0.5rem;">
+                        <li>Uplink: <span class="settings-value">Enabled</span></li>
+                        <li>Downlink: <span class="settings-value">Enabled</span></li>
+                        <li>Position: <span class="settings-value">Enabled</span></li>
+                        <li>Precise location: <span class="settings-value">Disabled</span></li>
+                        <li>Location Slider: <span class="settings-value">Set to 1.8mi (or larger if desired)</span>
+                        </li>
+                    </ul>
+                    <p style="margin-top: 0.5rem; color: var(--accent-green);">Click Save. Validate that you see both
+                        channels: LongFast and NCMesh. Click send, click close, then click the back arrow at the top.
+                    </p>
+
+                    <h4><i class="fa-solid fa-toggle-on" style="color: var(--accent-green);"></i> Device</h4>
+                    <ul>
+                        <li>If you have a mobile/pocket/edc node: <span class="settings-value">Client</span> or <span
+                                class="settings-value">Client Mute</span></li>
+                        <li>If you have a stationary node that is poorly placed (ie: inside a house): <span
+                                class="settings-value">Client Mute</span></li>
+                        <li>If you have a stationary node that is well placed (2nd floor window, roof, attic): <span
+                                class="settings-value">Client</span></li>
+                        <li>If you have multiple nodes for camping/poor cell service/innawoods/etc: <span
+                                class="settings-value">Client</span></li>
+                        <li>NodeInfo broadcast interval: <span class="settings-value">3600 Seconds</span></li>
+                    </ul>
+                    <p style="margin-top: 0.5rem; color: var(--accent-green);">Scroll down, click send, click close, and
+                        click the back arrow at the top.</p>
+                    <h4><i class="fa-solid fa-location-crosshairs" style="color: var(--accent-green);"></i> Position
+                    </h4>
+                    <ul>
+                        <li>Position Broadcast Interval: <span class="settings-value">3600 Seconds</span></li>
+                        <li>Smart broadcast minimum interval: <span class="settings-value">1800 Seconds</span></li>
+                        <li>GPS Update Interval: <span class="settings-value">1800 Seconds</span></li>
+                    </ul>
+                    <p style="margin-top: 0.5rem; color: var(--accent-green);">Scroll down and click send, close, and
+                        then click the back arrow at the top.</p>
+
+                    <h4><i class="fa-solid fa-wave-square" style="color: var(--accent-green);"></i> LoRa</h4>
+                    <ul>
+                        <li>Change the hop limit to: <span class="settings-value">5-7</span></li>
+                        <li>OK to MQTT: <span class="settings-value">Enabled</span></li>
+                    </ul>
+                    <span class="settings-warning">WARNING: If 'Ignore MQTT' is on/enabled or 'OK to MQTT' is
+                        off/disabled, then you may only see half of conversations!</span>
+                    <p style="margin-top: 0.5rem; color: var(--accent-green);">Click send, click close, and then click
+                        the back arrow at the top.</p>
+
+                    <h4><i class="fa-solid fa-cloud-arrow-up" style="color: var(--accent-green);"></i> MQTT</h4>
+                    <ul>
+                        <li>MQTT Enabled: <span class="settings-value">Enabled</span></li>
+                        <li>Address: <span class="settings-value">mqtt.ncmesh.net</span></li>
+                        <li>Username (default): <span class="settings-value">meshdev</span></li>
+                        <li>Password (default): <span class="settings-value">large4cats</span></li>
+                        <li>Encryption enabled: <span class="settings-value">Enabled</span></li>
+                        <li>Root topic (case sensitive): <span class="settings-value">msh/US</span></li>
+                        <li>Proxy to client enabled: <span class="settings-value">Enabled</span></li>
+                        <li>Map reporting: <span class="settings-value">Enabled</span></li>
+                        <li>Map Report, Enabled: <span class="settings-value">on</span></li>
+                        <li>Precise location: <span class="settings-value">disabled</span></li>
+                        <li>Approximate location: <span class="settings-value">1.8mi</span></li>
+                        <li>Map reporting interval: <span class="settings-value">900 Seconds</span></li>
+                    </ul>
+                    <p style="margin-top: 0.5rem; color: var(--accent-green);">Click send, click close, and then click
+                        the back arrow at the top twice to return to the main screen.</p>
+
+                    <h4 style="color: var(--accent-green);"><i class="fa-solid fa-comment-dots"></i> Say Hi!</h4>
+                    <p style="margin-bottom: 0;">Open the app -> Click the message bubble at the top left -> Click on
+                        LongFast or NCMesh -> Type a message and greet the network!</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- Network Best Practices Section -->
+    <section class="guide-section" style="margin-top: 1rem;">
+        <div class="container" style="max-width: 800px;">
+            <!-- Interactive Header Trigger Box -->
+            <div class="accordion-header">
+                <h4 style="margin-bottom: 0; font-size: 1.4rem;">Network Best Practices</h4>
+                <i class="fa-solid fa-chevron-down accordion-icon"></i>
+            </div>
+            
+            <!-- Collapsible Content Holder -->
+            <div class="accordion-content">
+                <div class="card">
+                    <p>This is a community driven project. Following these coordination guidelines will ensure the best possible airtime utilization and packet delivery experience for everyone as we continue to grow.</p>
+
+                    <h4><i class="fa-solid fa-bolt" style="color: var(--accent-green);"></i> TL;DR; Quick Reference Baseline</h4>
+                    <ul>
+                        <li>Standard Device Role: <span class="settings-value">Client</span></li>
+                        <li>Optimal Hop Count: <span class="settings-value">4-7 Hops</span></li>
+                        <li>Base Broadcast Intervals: <span class="settings-value">6 Hours (Info / Position / Telemetry)</span></li>
+                    </ul>
+
+                    <h4><i class="fa-solid fa-toggle-on" style="color: var(--accent-green);"></i> Device Role Best Practices</h4>
+                    <p>It may be tempting to set your device to ‘client/router’ or one of the other infrastructure modes, however from our extensive testing we’ve seen the best results for the end user, and the network as a whole using the ‘client mute’ or 'client' roles. Meshtastic does not currently have any intelligent routing built into the firmware. Nodes are set to rebroadcast any message they receive that they have not heard rebroadcast from another node at a random time interval. The ‘client/router’ and other infrastructure roles take that random interval and subtracts another random interval ensuring that they rebroadcast first.</p>
+                    <p>While this may sound good on paper, due to constantly changing environmental variables you may be inadvertently creating dead ends in the network, bypassing intended recipients, and closing off redundant routing paths. We highly recommend starting with ‘client mute’ for mobile users and nodes that aren't well placed (where someone else may be able to relay through it). For well placed nodes (2nd story window, attic, roof, etc) 'client' is recommended. For extremely well placed nodes with higher power or nodes on mountains or towers, 'router' is fine to use.</p>
+                    <p>'client mute' is great for device connected nodes (the ones you're sending messages from) that are not contributing to the network (not outdoor nodes) as it reduces overall network airtime (network load). An example of this would be a device connected node in your home that is connected to MQTT or goes through a relay node on your roof.</p>
+
+                    <h4><i class="fa-solid fa-route" style="color: var(--accent-green);"></i> Hop Count Scaling</h4>
+                    <p>We recommend starting with a hop count of 4, and always using the minimum number of hops needed to reach your destination. If you are running a device connected node in your home and a relay node that your client always goes through, a hop count of 5 is advised. If you are on the edge of the network and are not achieving results with the above, 6 hops may be useful however we recommend ensuring that you've done all you can with regard to optimizing your node hardware and placement first, if these are not taken care of additional hops will not yield greater distance and will degrade the performance of the wider network.</p>
+                    <h4><i class="fa-solid fa-clock" style="color: var(--accent-green);"></i> Broadcast Interval Parameters (Position, Telemetry, Node Info)</h4>
+                    <p>In order to reduce overall channel utilization and ensure messages are delivered we recommend the following settings for everyday use unless you have a specific use case or are running a test that requires more frequent updates.</p>
+                    <ul>
+                        <li>Device Config (Node Info): <span class="settings-value">30 Minutes</span></li>
+                        <li>Position Broadcast: <span class="settings-value">1 Hour</span></li>
+                        <li>Smart Position: <span class="settings-value">Enabled</span></li>
+                        <li>Minimum Interval: <span class="settings-value">30 Minutes</span></li>
+                        <li>Minimum Distance: <span class="settings-value">100 Meters</span></li>
+                        <li>GPS Update Interval: <span class="settings-value">30 Minutes</span></li>
+                        <li>Position Flags: <span class="settings-value">Disable all flags not explicitly required</span></li>
+                    </ul>
+
+                    <h4><i class="fa-solid fa-cloud-nodes" style="color: var(--accent-green);"></i> MQTT Server Infrastructure Integration</h4>
+                    <p>Opinions on using MQTT with Meshtastic are widely varied. Some Meshtastic users and groups have chosen not to use MQTT with Meshtastic in the spirit of building out a stronger RF based mesh network. Building out RF coverage is a noble goal that we all share, but we feel that MQTT has a lot of utility (especially in the early days of mesh building).</p>
+                    <p>We use MQTT to bridge RF gaps in order to connect pockets of users throughout the state into a single mesh. We also leverage MQTT for hop count reduction. 7+ hops from Raleigh to Asheville can be reduced to two hops through MQTT (node -> raleigh router -> asheville router -> node).</p>
+                    <p>MQTT is also great for mobile/pocket nodes. You can stay connected to the mesh no matter where you are (or what local RF coverage looks like).</p>
+                    <p>Our MQTT server is private, so your nodelist will only reflect other NCMesh nodes/users (not the entire US/planet), and the probability of unwanted messages/spam coming across MQTT is greatly reduced.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="hero-buttons-section" style="padding: 1rem 0 1.5rem;">
+        <div class="container">
+            <div class="hero-buttons" style="margin-top: 0;">
+                <a href="lora.html" class="btn btn-secondary" style="background-color: #0395c8 !important; color: #ffffff !important; border-color: #0395c8;">What is "LoRa"?</a>
+            </div>
+            <div class="hero-buttons" style="margin-top: 0.75rem;">
+                <a href="meshtastic-vs-meshcore.html" class="btn btn-secondary" style="background-color: #0f766e !important; color: #ffffff !important; border-color: #0f766e;">Meshtastic vs MeshCore</a>
+            </div>
+            <div class="hero-buttons" style="margin-top: 0.75rem;">
+                <a href="meshtastic.html" class="btn btn-primary">Explore Meshtastic</a>
+                <a href="meshcore.html" class="btn btn-secondary" style="background-color: #3b82f6 !important; color: #000000 !important; border-color: #3b82f6;">Explore MeshCore</a>
+            </div>
+            <div class="hero-buttons" style="margin-top: 0.75rem;">
+                <a href="#" class="btn btn-primary" aria-disabled="true" tabindex="-1" style="background-color: #14532d !important; border-color: #14532d !important; color: #a3a3a3 !important; pointer-events: none; cursor: not-allowed; opacity: 0.8;">Configure Meshtastic</a>
+                <a href="config-meshcore.html" class="btn btn-secondary" style="background-color: #3b82f6 !important; color: #000000 !important; border-color: #3b82f6;">Configure MeshCore</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>© 2026 Crystal Coast of NC Mesh. Powered by the community.</p>
+        </div>
+    </footer>
+</body>
+</html>
+
