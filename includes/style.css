@@ -548,10 +548,14 @@ a:hover {
    10. Fluid Screen Adaptation & Mobile Media Boundaries
    ========================================================================== */
 @media (max-width: 768px) {
+    .navbar {
+        padding: 0.9rem 0;
+    }
+
     .navbar .container {
-        flex-direction: row;      /* Change from column to row */
-        justify-content: space-between; /* Puts logo on left, links on right */
-        align-items: center;      /* Centers them vertically */
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
         width: 100%;
         padding: 0 1rem;
     }
@@ -559,47 +563,107 @@ a:hover {
     .logo-brand {
         display: flex;
         align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
     }
     
     .brand-img {
-        height: 38px;
+        height: 32px;
     }
     
     .brand-text {
-        font-size: 1.25rem;
+        font-size: 0.95rem;
+        line-height: 1.2;
     }
     
     .nav-links {
-        display: flex !important;  /* Force horizontal flex */
-        flex-direction: row !important; 
-        margin: 0;                /* Remove default list margins */
-        padding: 0;               /* Remove default list padding */
-        list-style: none;         /* Strip bullet points */
-        gap: .5rem;                /* Space between your two links */
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        gap: 0.5rem;
     }
 
     .nav-links li {
-        display: inline-block;    /* Extra safety for list items */
+        display: block;
+        width: 100%;
     }
 
     .nav-links a {
-        font-size: 0.9rem;    
-        white-space: nowrap;   
+        font-size: 0.92rem;
+        white-space: normal;
+        display: block;
+        text-align: center;
+        padding: 0.35rem 0;
     }
     
     .hero {
-        padding: 8rem 0 3rem 0;   /* Reduced top padding since navbar is shorter now */
+        padding: 8.2rem 0 2.5rem 0;
     }
+
     .hero h1 {
-        font-size: 2rem;
+        font-size: 1.8rem;
+        line-height: 1.2;
     }
+
+    .hero-content p {
+        font-size: 1rem;
+    }
+
+    .hero-content-block {
+        padding: 2.25rem 0 1.75rem;
+    }
+
+    .hero-content-block h2 {
+        font-size: 1.5rem;
+    }
+
+    .hero-content-extended {
+        max-width: 100%;
+    }
+
+    .hero-buttons {
+        gap: 0.75rem;
+        margin-top: 1rem;
+    }
+
+    .hero-buttons .btn {
+        width: 100%;
+        max-width: 300px;
+        margin: 0;
+    }
+
     .btn-secondary {
         margin-left: 0;
-        margin-top: 0.75rem;
+        margin-top: 0.5rem;
     }
+
     .btn, .btn-primary, .btn-secondary {
         display: block;
         text-align: center;
+        padding: 0.7rem 1rem;
+    }
+
+    .card {
+        padding: 1.25rem;
+    }
+
+    .comparison-layout {
+        padding: 1.5rem 0;
+    }
+
+    .compare-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+        font-size: 0.85rem;
+    }
+
+    .compare-table th,
+    .compare-table td {
+        padding: 0.6rem;
     }
 }
 /* ==========================================================================
