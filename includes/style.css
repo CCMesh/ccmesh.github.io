@@ -412,6 +412,19 @@ a:hover {
     cursor: pointer;
 }
 
+.popup-link {
+    display: inline-block;
+    margin-top: 0.7rem;
+    color: var(--accent-green);
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+.popup-link:hover {
+    color: var(--text-main);
+}
+
 .feature-popup {
     position: fixed;
     inset: 0;
