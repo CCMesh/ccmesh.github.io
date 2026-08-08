@@ -223,6 +223,15 @@
                 topBtn.style.display = window.scrollY > 400 ? "block" : "none";
             });
 
+            const navToggle = document.querySelector('.nav-toggle');
+            const navbar = document.querySelector('.navbar');
+            if (navToggle && navbar) {
+                navToggle.addEventListener('click', () => {
+                    const isOpen = navbar.classList.toggle('nav-open');
+                    navToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                });
+            }
+
             const featureCards = document.querySelectorAll('.feature-card');
             const featurePopup = document.getElementById('feature-popup');
             const featurePopupTitle = document.getElementById('feature-popup-title');
@@ -289,11 +298,19 @@
     <!-- Header Navigation Bar Layer -->
     <header class="navbar">
         <div class="container">
-            <!-- Path explicitly updated to target the local directory syntax -->
-            <a href="index.html" class="logo-brand">
-                <img src="./img/CCM_logo-night.png" alt="CC Mesh Logo" class="brand-img">
-                <span class="brand-text"><span style="color: #0395c8;">cc-mesh.net  </span> Crystal Coast of North Carolina Mesh Network
-            </a>
+            <div class="header-brand">
+                <!-- Path explicitly updated to target the local directory syntax -->
+                <a href="index.html" class="logo-brand">
+                    <img src="./img/CCM_logo-night.png" alt="CC Mesh Logo" class="brand-img">
+                </a>
+                <div class="brand-text">Crystal Coast of North Carolina Mesh Network</div>
+                <div class="header-map">
+                    <img src="./img/north-carolina-map-1200px-edit-sized.png" alt="North Carolina map">
+                </div>
+            </div>
+            <button class="nav-toggle" aria-expanded="false" aria-label="Toggle navigation">
+                <i class="fa-solid fa-bars"></i>
+            </button>
             <nav>
                 <ul class="nav-links">
                     <!-- Meshtastic Dropdown Nesting Menu -->
@@ -329,8 +346,9 @@
         <div class="container hero-content">
             <h1>Building Off Grid Mesh Networks</h1>
             <p>Using MeshCore and Meshtastic, we're building a community-driven, off-grid, license free, subscription-free, cell service-free LoRa mesh radio infrastructure across the Crystal Coast along the Southern Outer Banks of North Carolina for personal and emergency communications.</p>
-            <div class="hero-image">
-                <img src="./img/north-carolina-map-1200px-edit-sized.png" alt="North Carolina map" />
+            <div class="hero-image side-by-side">
+                <img src="./img/MeshtasticEWNBannerMap.png" alt="Meshtastic EWN banner map">
+                <img src="./img/EWNBannerMap.png" alt="EWN banner map">
             </div>
         </div>
     </section>

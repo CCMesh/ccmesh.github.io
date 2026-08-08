@@ -122,6 +122,15 @@ a:hover {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 1rem;
+}
+
+.header-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: nowrap;
+    min-width: 0;
 }
 
 .logo-brand {
@@ -130,6 +139,25 @@ a:hover {
     gap: 0.75rem;
     text-decoration: none;
     padding: 0.25rem 0;
+}
+
+.brand-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.header-map img {
+    height: 3.5rem;
+    width: auto;
+    display: inline-block;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.18);
 }
 
 .brand-img {
@@ -166,10 +194,42 @@ a:hover {
     text-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
 }
 
+@media (max-width: 900px) {
+    .navbar .container {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .header-brand {
+        width: 100%;
+    }
+
+    .nav-links {
+        width: 100%;
+        margin-top: 0.75rem;
+    }
+}
+
 .nav-links {
     display: flex;
     list-style: none;
     gap: 1.5rem;
+}
+
+.nav-toggle {
+    display: none;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.15);
+    color: var(--text-main);
+    padding: 0.65rem 0.75rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-size: 1.1rem;
+    align-self: center;
+}
+
+.nav-toggle:hover {
+    background: rgba(255,255,255,0.05);
 }
 
 .nav-links a {
@@ -204,7 +264,7 @@ a:hover {
    6. Hero & Main Section Component Layouts
    ========================================================================== */
 .hero {
-    padding: 11rem 0 5rem 0;
+    padding: 6rem 0 1.75rem 0;
     position: relative;
     overflow: hidden;
 }
@@ -216,8 +276,12 @@ a:hover {
     text-align: center;
 }
 
+.hero-image {
+    margin-top: 1rem;
+}
+
 .hero-content-block {
-    padding: 4rem 0 3rem;
+    padding: 1.5rem 0 1rem;
 }
 
 .hero-content-extended {
@@ -242,7 +306,7 @@ a:hover {
     justify-content: center;
     align-items: center;
     gap: 1rem;
-    margin-top: 1.5rem;
+    margin-top: 1rem;
     flex-wrap: wrap;
 }
 
@@ -271,12 +335,24 @@ a:hover {
     box-shadow: 0 18px 45px rgba(0, 0, 0, 0.22);
 }
 
+.hero-image.side-by-side {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.hero-image.side-by-side img {
+    width: calc(50% - 0.5rem);
+    max-width: 560px;
+}
+
 .hero-buttons {
     display: flex;
     justify-content: center;
     gap: 1rem;
     flex-wrap: wrap;
-    margin-top: 2rem;
+    margin-top: 1.25rem;
 }
 
 /* Structural Features Element Grid */
@@ -284,7 +360,7 @@ a:hover {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 1.5rem;
-    padding: 2.5rem 0;
+    padding: 1.5rem 0;
     align-items: stretch;
     justify-items: center;
     max-width: 1100px;
@@ -304,7 +380,7 @@ a:hover {
     width: 100%;
     max-width: 1100px;
     margin: 0 auto;
-    padding: 2.5rem 0;
+    padding: 1.5rem 0;
 }
 
 .comparison-top {
@@ -475,7 +551,7 @@ a:hover {
    7. Map Framework Wrapper Containers
    ========================================================================== */
 .map-section {
-    padding: 3rem 0;
+    padding: 2rem 0;
 }
 
 .map-placeholder {
@@ -483,7 +559,7 @@ a:hover {
     border: 1px solid var(--border-color);
     border-radius: 0.5rem;
     height: 450px;
-    margin-top: 1.5rem;
+    margin-top: 1rem;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -562,22 +638,31 @@ a:hover {
    ========================================================================== */
 @media (max-width: 768px) {
     .navbar {
-        padding: 0.9rem 0;
+        padding: 0.75rem 0;
     }
 
     .navbar .container {
         flex-direction: column;
         align-items: flex-start;
-        gap: 0.75rem;
+        gap: 0.65rem;
         width: 100%;
         padding: 0 1rem;
     }
     
+    .header-brand {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+        width: 100%;
+    }
+
     .logo-brand {
         display: flex;
         align-items: center;
         flex-wrap: wrap;
         gap: 0.5rem;
+        width: 100%;
     }
     
     .brand-img {
@@ -587,8 +672,18 @@ a:hover {
     .brand-text {
         font-size: 0.95rem;
         line-height: 1.2;
+        white-space: normal;
+        width: 100%;
+    }
+
+    .header-map img {
+        height: 2.5rem;
     }
     
+    .nav-toggle {
+        display: inline-flex;
+    }
+
     .nav-links {
         display: flex !important;
         flex-direction: column !important;
@@ -596,7 +691,14 @@ a:hover {
         margin: 0;
         padding: 0;
         list-style: none;
-        gap: 0.5rem;
+        gap: 0.4rem;
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.35s ease;
+    }
+
+    .navbar.nav-open .nav-links {
+        max-height: 500px;
     }
 
     .nav-links li {
@@ -613,7 +715,7 @@ a:hover {
     }
     
     .hero {
-        padding: 8.2rem 0 2.5rem 0;
+        padding: 6.5rem 0 1.75rem 0;
     }
 
     .hero h1 {
@@ -626,7 +728,7 @@ a:hover {
     }
 
     .hero-content-block {
-        padding: 2.25rem 0 1.75rem;
+        padding: 1.5rem 0 1rem;
     }
 
     .hero-content-block h2 {
@@ -639,7 +741,7 @@ a:hover {
 
     .hero-buttons {
         gap: 0.75rem;
-        margin-top: 1rem;
+        margin-top: 0.75rem;
     }
 
     .hero-buttons .btn {
