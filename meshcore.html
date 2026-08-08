@@ -280,13 +280,22 @@
 
 <body>
 
+    <!-- Header Navigation Bar Layer -->
     <header class="navbar">
         <div class="container">
-            <!-- Path explicitly updated to target the local directory syntax -->
-            <a href="index.html" class="logo-brand">
-                <img src="./img/CCM_logo-night.png" alt="CC Mesh Logo" class="brand-img">
-                <span class="brand-text"><span style="color: #0395c8;">cc-mesh.net  </span> Crystal Coast of North Carolina Mesh Network
-            </a>
+            <div class="header-brand">
+                <!-- Path explicitly updated to target the local directory syntax -->
+                <a href="index.html" class="logo-brand">
+                    <img src="./img/CCM_logo-night.png" alt="CC Mesh Logo" class="brand-img">
+                </a>
+                <div class="brand-text">Crystal Coast of North Carolina Mesh Network</div>
+                <div class="header-map">
+                    <img src="./img/north-carolina-map-1200px-edit-sized.png" alt="North Carolina map">
+                </div>
+            </div>
+            <button class="nav-toggle" aria-expanded="false" aria-label="Toggle navigation">
+                <i class="fa-solid fa-bars"></i>
+            </button>
             <nav>
                 <ul class="nav-links">
                     <!-- Meshtastic Dropdown Nesting Menu -->
