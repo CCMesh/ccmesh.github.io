@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mesh In Emergency | CC Mesh</title>
+    <link rel="stylesheet" href="./includes/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+        integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            if (window.innerWidth <= 768) {
+                const dropdownToggles = document.querySelectorAll('.dropdown-toggle');
+
+                dropdownToggles.forEach(toggle => {
+                    toggle.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const parentLi = toggle.closest('.dropdown');
+                        parentLi.classList.toggle('active');
+                        const targetMenu = parentLi.querySelector('.dropdown-menu');
+
+                        if (targetMenu.style.display === 'block') {
+                            targetMenu.style.display = 'none';
+                        } else {
+                            targetMenu.style.display = 'block';
+                        }
+                    });
+                });
+            }
+
+            const observerOptions = { root: null, rootMargin: "0px", threshold: 0.1 };
+            const revealObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.opacity = "1";
+                        entry.target.style.transform = "translateY(0)";
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, observerOptions);
+
+            const animatedElements = document.querySelectorAll(".card, .map-placeholder, .hero-content h1, .hero-content p");
+            animatedElements.forEach(el => {
+                el.style.opacity = "0";
+                el.style.transform = "translateY(20px)";
+                el.style.transition = "opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)";
+                revealObserver.observe(el);
+            });
+
+            const heroSection = document.querySelector(".hero");
+            if (heroSection) {
+                const canvas = document.createElement("canvas");
+                const ctx = canvas.getContext("2d");
+
+                Object.assign(canvas.style, {
+                    position: "absolute", top: "0", left: "0", width: "100%", height: "100%",
+                    zIndex: "0", pointerEvents: "none"
+                });
+                heroSection.style.position = "relative";
+                heroSection.insertBefore(canvas, heroSection.firstChild);
+
+                let points = [];
+                let maxPoints = 110;
+                const maxDist = 165;
+                let mouse = { x: null, y: null, radius: 220 };
+
+                window.addEventListener("mousemove", (e) => {
+                    const rect = heroSection.getBoundingClientRect();
+                    mouse.x = e.clientX - rect.left;
+                    mouse.y = e.clientY - rect.top;
+                });
+
+                window.addEventListener("mouseleave", () => {
+                    mouse.x = null;
+                    mouse.y = null;
+                });
+
+                class MeshNode {
+                    constructor(startX, startY) {
+                        this.x = startX !== undefined ? startX : Math.random() * canvas.width;
+                        this.y = startY !== undefined ? startY : Math.random() * canvas.height;
+                        this.vx = (Math.random() - 0.5) * 0.16;
+                        this.vy = (Math.random() - 0.5) * 0.16;
+                        this.baseRadius = Math.random() * 1.5 + 0.8;
+                        this.radius = this.baseRadius;
+                        this.pulseFactor = Math.random() * Math.PI;
+                        this.depth = Math.random() * 0.5 + 0.3;
+                    }
+                    update() {
+                        this.x += this.vx;
+                        this.y += this.vy;
+
+                        if (this.x < 0) this.x = canvas.width;
+                        if (this.x > canvas.width) this.x = 0;
+                        if (this.y < 0) this.y = canvas.height;
+                        if (this.y > canvas.height) this.y = 0;
+
+                        this.pulseFactor += 0.012;
+                        this.radius = this.baseRadius + Math.sin(this.pulseFactor) * 0.3;
+
+                        if (mouse.x !== null && mouse.y !== null) {
+                            const dx = mouse.x - this.x;
+                            const dy = mouse.y - this.y;
+                            const distance = Math.hypot(dx, dy);
+
+                            if (distance < mouse.radius) {
+                                const force = (mouse.radius - distance) / mouse.radius;
+                                this.x -= (dx / distance) * force * 0.35;
+                                this.y -= (dy / distance) * force * 0.35;
+                            }
+                        }
+                    }
+                    draw() {
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(34, 197, 94, ${this.depth * 0.5})`;
+                        ctx.fill();
+                    }
+                }
+
+                function resizeCanvas() {
+                    const oldWidth = canvas.width || heroSection.offsetWidth;
+                    const oldHeight = canvas.height || heroSection.offsetHeight;
+
+                    canvas.width = heroSection.offsetWidth;
+                    canvas.height = heroSection.offsetHeight;
+
+                    const targetPoints = Math.min(Math.floor((canvas.width * canvas.height) / 7500), maxPoints);
+
+                    if (points.length === 0) {
+                        for (let i = 0; i < targetPoints; i++) {
+                            points.push(new MeshNode());
+                        }
+                    } else {
+                        points.forEach(p => {
+                            p.x = (p.x / oldWidth) * canvas.width;
+                            p.y = (p.y / oldHeight) * canvas.height;
+                        });
+
+                        if (points.length < targetPoints) {
+                            while (points.length < targetPoints) points.push(new MeshNode());
+                        } else if (points.length > targetPoints) {
+                            points.splice(targetPoints);
+                        }
+                    }
+                }
+
+                window.addEventListener("resize", resizeCanvas);
+                resizeCanvas();
+
+                function animateMesh() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                    for (let i = 0; i < points.length; i++) {
+                        points[i].update();
+                        points[i].draw();
+
+                        for (let j = i + 1; j < points.length; j++) {
+                            const dx = points[i].x - points[j].x;
+                            const dy = points[i].y - points[j].y;
+                            const dist = Math.hypot(dx, dy);
+
+                            if (dist < maxDist) {
+                                let alpha = (1 - dist / maxDist) * 0.13 * (points[i].depth * points[j].depth);
+
+                                if (mouse.x !== null && mouse.y !== null) {
+                                    const mDist1 = Math.hypot(mouse.x - points[i].x, mouse.y - points[i].y);
+                                    const mDist2 = Math.hypot(mouse.x - points[j].x, mouse.y - points[j].y);
+                                    if (mDist1 < mouse.radius || mDist2 < mouse.radius) {
+                                        alpha *= 2.0;
+                                    }
+                                }
+
+                                ctx.beginPath();
+                                ctx.moveTo(points[i].x, points[i].y);
+                                ctx.lineTo(points[j].x, points[j].y);
+                                ctx.strokeStyle = `rgba(34, 197, 94, ${alpha})`;
+                                ctx.lineWidth = dist < maxDist * 0.35 ? 0.8 : 0.4;
+                                ctx.stroke();
+                            }
+                        }
+                    }
+                    requestAnimationFrame(animateMesh);
+                }
+                animateMesh();
+            }
+
+            const topBtn = document.createElement("button");
+            topBtn.innerHTML = '<i class="fa-solid fa-arrow-up"></i>';
+            Object.assign(topBtn.style, {
+                position: "fixed", bottom: "30px", right: "30px", width: "45px", height: "45px",
+                backgroundColor: "#1a1c1e", color: "#22c55e", border: "1px solid #2a2d31",
+                borderRadius: "50%", cursor: "pointer", display: "none", zIndex: "2000",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.4)", transition: "all 0.3s ease"
+            });
+            document.body.appendChild(topBtn);
+
+            window.addEventListener("scroll", () => {
+                topBtn.style.display = window.scrollY > 400 ? "block" : "none";
+            });
+
+            topBtn.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+            topBtn.addEventListener("mouseenter", () => {
+                topBtn.style.backgroundColor = "rgba(34, 197, 94, 0.1)";
+                topBtn.style.borderColor = "#22c55e";
+                topBtn.style.boxShadow = "0 0 15px rgba(34, 197, 94, 0.3)";
+            });
+            topBtn.addEventListener("mouseleave", () => {
+                topBtn.style.backgroundColor = "#1a1c1e";
+                topBtn.style.borderColor = "#2a2d31";
+                topBtn.style.boxShadow = "0 4px 12px rgba(0,0,0,0.4)";
+            });
+        });
+    </script>
+</head>
+
+<body>
+    <header class="navbar">
+        <div class="container">
+            <div class="header-brand">
+                <a href="index.html" class="logo-brand">
+                    <img src="./img/CCM_logo-night.png" alt="CC Mesh Logo" class="brand-img">
+                </a>
+                <div class="brand-text">Crystal Coast of North Carolina Mesh Network</div>
+                <div class="header-map">
+                    <img src="./img/north-carolina-map-1200px-edit-sized.png" alt="North Carolina map">
+                </div>
+            </div>
+            <button class="nav-toggle" aria-expanded="false" aria-label="Toggle navigation">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            <nav>
+                <ul class="nav-links">
+                    <li class="dropdown">
+                        <a href="meshtastic.html" class="dropdown-toggle">Meshtastic <i class="fa-solid fa-chevron-down nav-arrow"></i></a>
+                        <ul class="dropdown-menu">
+                            <li><a href="meshtastic-vs-meshcore.html"><i class="fa-solid fa-scale-balanced"></i> Meshtastic vs MeshCore</a></li>
+                            <li><a href="meshtastic.html"><i class="fa-solid fa-circle-info"></i> Network Info</a></li>
+                            <li><a href="config-meshtastic.html"><i class="fa-solid fa-sliders"></i> Setup Instructions</a></li>
+                        </ul>
+                    </li>
+                    <li class="dropdown">
+                        <a href="meshcore.html" class="dropdown-toggle">MeshCore <i class="fa-solid fa-chevron-down nav-arrow"></i></a>
+                        <ul class="dropdown-menu">
+                            <li><a href="meshtastic-vs-meshcore.html"><i class="fa-solid fa-scale-balanced"></i> Meshtastic vs MeshCore</a></li>
+                            <li><a href="meshcore.html"><i class="fa-solid fa-circle-info"></i> Network Info</a></li>
+                            <li><a href="config-meshcore.html"><i class="fa-solid fa-sliders"></i> Setup Instructions</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero" style="padding: 5.5rem 0 1.25rem 0;">
+        <div class="container hero-content">
+            <h1><span style="color: #0395c8;">Mesh In An Emergency</span></h1>
+            <p>When cell towers fail, power is unstable, or roads are blocked, local mesh networks can keep communication alive. Community-built radio networks provide a practical lifeline for alerts, check-ins, routing, and coordination.</p>
+        </div>
+    </section>
+
+    <section class="features" style="padding: 1.25rem 0 1.25rem 0;">
+        <h2 style="margin-bottom: 0.75rem; text-align: center; color: #0395c8;">Why emergency mesh matters</h2>
+        <div class="container">
+            <div class="grid-2x2" style="margin-top: 0.5rem;">
+                <div class="card feature-card" style="padding: 1.25rem;">
+                    <i class="fa-solid fa-tower-cell feature-icon" style="color: #0395c8;"></i>
+                    <h3>Why Cell Towers Don't Survive Hurricanes</h3>
+                    <p>Cellular networks depend on three things that fail during hurricanes: <b>towers</b>, <b>power</b>, and <b>backhaul</b>. <li>1) Tower structural integrity and/or equipment installed on the tower can fail in high winds.</li> <li>2) The grid power goes out as power lines are severed and poles are blown down and emergency generators run out of fuel.</li> <li>3a) The interconnecting fiber optic backhaul cables running between the towers and the central office can be flooded/shorted out by salt ocean water in the underground cable vaults or road side equipment huts.</li> <li>3b) Microwave backhaul dishes and/or their transmission cable that feeds other towers and the switching central office can be damaged or brought down by high winds or flying debris.</li></p><p> When any one of these fails <b>(tower/power/backhaul)</b>, your phone ceases to function as a cellular communications device.</p>
+                </div>
+                <div class="card feature-card" style="padding: 1.25rem;">
+                    <i class="fa-solid fa-network-wired feature-icon" style="color: #0395c8;"></i>
+                    <h3>Mesh Networks are Different</h3>
+                    <p>Each node is a self-contained radio, some the size of a credit card or cell phone. They run on milliwatts of power — a single 18650 battery (the same as in many vape/e-cigarettes) lasts 2–5 days, and a small 5W solar panel can run one indefinitely. They operate in the 915 MHz Industrial/Scientific/Medical license free band, which doesn't require a license (FCC PART 15). And because it's a mesh, messages hop from node to node — if one goes down, traffic routes around it.</p>
+                </div>
+                <div class="card feature-card" style="padding: 1.25rem;">
+                    <i class="fa-solid fa-life-ring feature-icon" style="color: #0395c8;"></i>
+                    <h3>Some Uses for Mesh Networks in Emergency Situations</h3>
+                    <p>Neighbors, volunteers, and responders can coordinate transportation, supplies, and wellness check-ins without relying on the internet.</p>
+                </div>
+                <div class="card feature-card" style="padding: 1.25rem;">
+                    <i class="fa-solid fa-shield-heart feature-icon" style="color: #0395c8;"></i>
+                    <h3>Community readiness</h3>
+                    <p>Building a small network before an emergency makes it faster to support families, clinics, shelters, and response teams when events happen.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="map-section" style="padding: 1.25rem 0 1.75rem 0;">
+        <div class="container">
+            <h2>Emergency communications priorities</h2>
+            <p>Focus on simple, reliable messaging first: check-ins, location awareness, routing, and trusted contact lists.</p>
+            <div class="card" style="padding: 1.5rem; margin-top: 0.75rem;">
+                <ul>
+                    <li>Keep a small set of core emergency contacts and frequencies documented.</li>
+                    <li>Place mesh repeaters or mesh relay nodes where they can cover key neighborhoods and gathering points.</li>
+                    <li>Practice short, clear messages that can be transmitted under stress.</li>
+                    <li>Pair the mesh with battery backup, solar power, and simple offline plans. Portable mesh devices can be operated and recharged off cellular phone power banks.</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <section class="hero-buttons-section" style="padding: 0.35rem 0 1rem;">
+        <div class="container">
+            <h2 style="text-align: center; margin-bottom: 1rem;">Deeper Dive</h2>
+            <div class="hero-buttons">
+                <a href="lora.html" class="btn btn-secondary" style="background-color: #0395c8 !important; color: #ffffff !important; border-color: #0395c8;">What is "LoRa"?</a>
+            </div>
+            <div class="hero-buttons">
+                <a href="#" class="btn btn-secondary" aria-disabled="true" tabindex="-1" style="background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important; color: rgba(255,255,255,0.7) !important; border-color: #b45309 !important; pointer-events: none; cursor: not-allowed; opacity: 0.85; box-shadow: none;">Mesh in Emergency</a>
+            </div>
+            <div class="hero-buttons">
+                <a href="meshtastic-vs-meshcore.html" class="btn btn-secondary" style="background-color: #0f766e !important; color: #ffffff !important; border-color: #0f766e;">Meshtastic vs MeshCore</a>
+            </div>
+            <div class="hero-buttons" style="margin-top: 0.75rem;">
+                <a href="meshtastic.html" class="btn btn-primary">Explore Meshtastic</a>
+                <a href="meshcore.html" class="btn btn-secondary" style="background-color: #3b82f6 !important; color: #000000 !important; border-color: #3b82f6;">Explore MeshCore</a>
+            </div>
+            <div class="hero-buttons" style="margin-top: 0.75rem;">
+                <a href="config-meshtastic.html" class="btn btn-primary">Configure Meshtastic</a>
+                <a href="config-meshcore.html" class="btn btn-secondary" style="background-color: #3b82f6 !important; color: #000000 !important; border-color: #3b82f6;">Configure MeshCore</a>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <p>© 2026 Crystal Coast of NC Mesh. Powered by the community.</p>
+        </div>
+    </footer>
+</body>
+
+</html>
