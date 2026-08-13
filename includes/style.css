@@ -392,9 +392,33 @@ a:hover {
     gap: 1.5rem;
     padding: 1.5rem 0;
     align-items: stretch;
-    justify-items: center;
+    justify-items: start;
     max-width: 1100px;
     margin: 0 auto;
+}
+
+/* Key Applications: keep three cards on a single centered row on wide screens */
+.key-apps-row {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    flex-wrap: nowrap;
+    max-width: 1100px; /* allow three standard cards to sit on one row */
+    margin: 0 auto;
+}
+.key-apps-row .card {
+    flex: 0 0 340px;
+    max-width: 340px;
+}
+
+@media (max-width: 1024px) {
+    .key-apps-row {
+        flex-wrap: wrap;
+    }
+    .key-apps-row .card {
+        flex: 1 1 100%;
+        max-width: none;
+    }
 }
 
 .features .container {
@@ -485,6 +509,7 @@ a:hover {
     padding: 2rem;
     border-radius: 0.5rem;
     border: 1px solid var(--border-color);
+    text-align: left;
 }
 
 .card:hover {
@@ -516,6 +541,16 @@ a:hover {
 .feature-card:hover {
     transform: translateY(-6px);
     cursor: pointer;
+}
+
+/* Utility: center a single card within a grid while keeping its text left-aligned */
+.center-card {
+    justify-self: center;
+    display: block;
+    max-width: 360px;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .popup-link {
@@ -575,6 +610,19 @@ a:hover {
 .feature-popup-content h3 {
     margin-bottom: 0.75rem;
     color: var(--text-main);
+}
+
+/* Improve tap targets and mobile UX for popup/text links */
+.popup-link, .text-meshcore, .text-meshtastic {
+    display: inline-block;
+    padding: 0.35rem 0.5rem;
+    border-radius: 0.25rem;
+}
+
+/* Prevent long words from causing horizontal scroll inside cards */
+.card p {
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
 }
 
 /* ==========================================================================
@@ -643,6 +691,78 @@ a:hover {
     margin-left: 1rem;
 }
 
+/* Brand-specific button styles */
+.btn-meshcore {
+    background-color: #3b82f6 !important;
+    color: #000000 !important;
+    border-color: #3b82f6 !important;
+}
+
+.btn-meshtastic {
+    background-color: var(--accent-green) !important;
+    color: #ffffff !important;
+    border-color: var(--accent-green) !important;
+}
+
+/* Info, compare, and alternate disabled button styles */
+.btn-info {
+    background-color: #0395c8 !important;
+    color: #ffffff !important;
+    border-color: #0395c8 !important;
+}
+
+.btn-compare {
+    background-color: #0f766e !important;
+    color: #ffffff !important;
+    border-color: #0f766e !important;
+}
+
+.btn-disabled-alt {
+    background-color: #1e3a8a !important;
+    color: #a3a3a3 !important;
+    border-color: #1e3a8a !important;
+    pointer-events: none;
+    cursor: not-allowed;
+    opacity: 0.8;
+}
+
+/* Gradient button used for "Mesh in Emergency" and similar highlights */
+.btn-gradient {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+    color: #ffffff !important;
+    border-color: #d97706 !important;
+    box-shadow: 0 0 18px rgba(217, 119, 6, 0.25) !important;
+}
+
+.btn-gradient-disabled {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
+    color: rgba(255,255,255,0.7) !important;
+    border-color: #b45309 !important;
+    pointer-events: none;
+    cursor: not-allowed;
+    opacity: 0.85;
+    box-shadow: none !important;
+}
+
+/* Text-only link colors for inline links (no background) */
+.text-meshtastic {
+    color: var(--accent-green) !important;
+    font-weight: 600;
+    text-decoration: none;
+}
+.text-meshtastic:hover {
+    text-decoration: underline;
+}
+
+.text-meshcore {
+    color: #3b82f6 !important;
+    font-weight: 600;
+    text-decoration: none;
+}
+.text-meshcore:hover {
+    text-decoration: underline;
+}
+
 .btn-secondary:hover {
     text-decoration: none;
     background-color: rgba(255, 255, 255, 0.03) !important;
@@ -667,8 +787,9 @@ a:hover {
    10. Fluid Screen Adaptation & Mobile Media Boundaries
    ========================================================================== */
 @media (max-width: 768px) {
+    /* Make navbar more compact on phones to reduce overlap */
     .navbar {
-        padding: 0.75rem 0;
+        padding: 0.45rem 0;
     }
 
     .navbar .container {
@@ -679,39 +800,46 @@ a:hover {
         padding: 0 1rem;
     }
     
+    /* Keep logo + title inline on phones; hide the map badge to save space */
     .header-brand {
         display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 0.6rem;
         width: 100%;
     }
 
     .logo-brand {
         display: flex;
         align-items: center;
-        flex-wrap: wrap;
         gap: 0.5rem;
-        width: 100%;
+        flex: 0 0 auto;
     }
     
     .brand-img {
-        height: 32px;
+        height: 28px;
     }
     
     .brand-text {
-        font-size: 0.95rem;
-        line-height: 1.2;
-        white-space: normal;
-        width: 100%;
+        font-size: 0.9rem;
+        line-height: 1.05;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-left: 0.4rem;
+        flex: 1 1 auto;
+        text-align: left;
     }
 
-    .header-map img {
-        height: 2.5rem;
+    /* hide the map badge on smaller screens to reduce visual clutter */
+    .header-map {
+        display: none;
     }
     
     .nav-toggle {
         display: inline-flex;
+        margin-left: auto;
     }
 
     .nav-links {
@@ -744,8 +872,9 @@ a:hover {
         padding: 0.35rem 0;
     }
     
+    /* Increase top padding so fixed navbar doesn't overlap the hero title on phones */
     .hero {
-        padding: 6.5rem 0 1.75rem 0;
+        padding: 11rem 0 1.75rem 0;
     }
 
     .hero h1 {
@@ -754,6 +883,39 @@ a:hover {
     }
 
     .hero-content p {
+        font-size: 1rem;
+    }
+
+    /* Mobile-specific popup sizing and button stacking */
+    .feature-popup-content {
+        max-width: calc(100% - 2rem);
+        padding: 1rem;
+    }
+
+    .feature-popup-links a {
+        display: block !important;
+        width: 100% !important;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Make hero heading comfortably smaller on phones */
+    .hero h1 {
+        font-size: 1.6rem;
+    }
+
+    /* Slightly increase card padding and ensure full-width stacking */
+    .card {
+        padding: 1.25rem;
+    }
+
+    .key-apps-row .card, .grid-3 {
+        width: 100%;
+        max-width: none;
+    }
+
+    /* Make nav links easier to tap when expanded */
+    .nav-links a {
+        padding: 0.75rem 0;
         font-size: 1rem;
     }
 
