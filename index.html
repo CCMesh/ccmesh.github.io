@@ -236,24 +236,69 @@
             const featurePopup = document.getElementById('feature-popup');
             const featurePopupTitle = document.getElementById('feature-popup-title');
             const featurePopupText = document.getElementById('feature-popup-text');
-            const featurePopupLink = document.getElementById('feature-popup-link');
+            const featurePopupLinks = document.getElementById('feature-popup-links');
+            const featurePopupLinkMeshtastic = document.getElementById('feature-popup-link-meshtastic');
+            const featurePopupLinkMeshcore = document.getElementById('feature-popup-link-meshcore');
             const featurePopupClose = document.querySelector('.feature-popup-close');
 
             featureCards.forEach(card => {
                 card.addEventListener('click', () => {
                     featurePopupTitle.textContent = card.dataset.title;
                     featurePopupText.textContent = card.dataset.text;
+
+                    // Hide links by default
+                    featurePopupLinks.style.display = 'none';
+                    featurePopupLinkMeshtastic.style.display = 'none';
+                    featurePopupLinkMeshcore.style.display = 'none';
+
+                    // Legacy single link support (uses Meshtastic slot)
                     if (card.dataset.link) {
-                        featurePopupLink.href = card.dataset.link;
-                        featurePopupLink.textContent = card.dataset.linkLabel || 'Learn More';
-                        featurePopupLink.style.backgroundColor = card.dataset.linkColor || '';
-                        featurePopupLink.style.borderColor = card.dataset.linkColor || '';
-                        featurePopupLink.style.display = 'inline-block';
-                    } else {
-                        featurePopupLink.style.backgroundColor = '';
-                        featurePopupLink.style.borderColor = '';
-                        featurePopupLink.style.display = 'none';
+                        featurePopupLinkMeshtastic.href = card.dataset.link;
+                        featurePopupLinkMeshtastic.textContent = card.dataset.linkLabel || 'Learn More';
+                        // If the button label is the comparison page, use the darker teal color
+                        if (featurePopupLinkMeshtastic.textContent && featurePopupLinkMeshtastic.textContent.trim() === 'Meshtastic vs MeshCore') {
+                            featurePopupLinkMeshtastic.style.setProperty('background-color', '#0f766e', 'important');
+                            featurePopupLinkMeshtastic.style.setProperty('border-color', '#0f766e', 'important');
+                            featurePopupLinkMeshtastic.style.setProperty('color', '#ffffff', 'important');
+                        } else {
+                            // remove any previously set inline styles so stylesheet rules apply
+                            featurePopupLinkMeshtastic.style.removeProperty('background-color');
+                            featurePopupLinkMeshtastic.style.removeProperty('border-color');
+                            featurePopupLinkMeshtastic.style.removeProperty('color');
+                            if (card.dataset.linkColor) {
+                                featurePopupLinkMeshtastic.style.setProperty('background-color', card.dataset.linkColor, 'important');
+                                featurePopupLinkMeshtastic.style.setProperty('border-color', card.dataset.linkColor, 'important');
+                            }
+                        }
+                        featurePopupLinkMeshtastic.style.display = 'inline-block';
+                        featurePopupLinks.style.display = 'block';
                     }
+
+                    // Specific Meshtastic / MeshCore links
+                    if (card.dataset.meshtasticLink) {
+                        featurePopupLinkMeshtastic.href = card.dataset.meshtasticLink;
+                        featurePopupLinkMeshtastic.textContent = card.dataset.meshtasticLabel || 'Meshtastic';
+                        // If the button label is the comparison page, use the darker teal color
+                        if (featurePopupLinkMeshtastic.textContent && featurePopupLinkMeshtastic.textContent.trim() === 'Meshtastic vs MeshCore') {
+                            featurePopupLinkMeshtastic.style.setProperty('background-color', '#0f766e', 'important');
+                            featurePopupLinkMeshtastic.style.setProperty('border-color', '#0f766e', 'important');
+                            featurePopupLinkMeshtastic.style.setProperty('color', '#ffffff', 'important');
+                        } else {
+                            featurePopupLinkMeshtastic.style.removeProperty('background-color');
+                            featurePopupLinkMeshtastic.style.removeProperty('border-color');
+                            featurePopupLinkMeshtastic.style.removeProperty('color');
+                        }
+                        featurePopupLinkMeshtastic.style.display = 'inline-block';
+                        featurePopupLinks.style.display = 'block';
+                    }
+
+                    if (card.dataset.meshcoreLink) {
+                        featurePopupLinkMeshcore.href = card.dataset.meshcoreLink;
+                        featurePopupLinkMeshcore.textContent = card.dataset.meshcoreLabel || 'MeshCore';
+                        featurePopupLinkMeshcore.style.display = 'inline-block';
+                        featurePopupLinks.style.display = 'block';
+                    }
+
                     featurePopup.classList.add('active');
                     featurePopup.setAttribute('aria-hidden', 'false');
                 });
@@ -262,9 +307,11 @@
             const closePopup = () => {
                 featurePopup.classList.remove('active');
                 featurePopup.setAttribute('aria-hidden', 'true');
-                featurePopupLink.style.backgroundColor = '';
-                featurePopupLink.style.borderColor = '';
-                featurePopupLink.style.display = 'none';
+                featurePopupLinks.style.display = 'none';
+                featurePopupLinkMeshtastic.style.backgroundColor = '';
+                featurePopupLinkMeshtastic.style.borderColor = '';
+                featurePopupLinkMeshtastic.style.display = 'none';
+                featurePopupLinkMeshcore.style.display = 'none';
             };
 
             featurePopupClose.addEventListener('click', closePopup);
@@ -345,7 +392,7 @@
     <section class="hero">
         <div class="container hero-content">
             <h1>Building Community Off Grid Mesh Networks</h1>
-            <p>Using MeshCore and Meshtastic, we're building a community-driven, off-grid, license free, subscription-free, cell service-free LoRa mesh radio infrastructure across the Crystal Coast along the Southern Outer Banks of North Carolina for personal and emergency communications.</p>
+            <p>We're building an off-grid LoRa mesh network with MeshCore and Meshtastic across the Crystal Coast and Southern Outer Banks. The community-run network works without cell service, subscriptions, or licenses—ideal for everyday and emergency communication.</p>
             <div class="hero-image side-by-side">
                 <figure class="hero-banner-card">
                     <img src="./img/MeshtasticEWNBannerMap.png" alt="Meshtastic EWN banner map">
@@ -362,7 +409,7 @@
         <div class="container">
             <div class="hero-content-extended">
                 <h2>Mesh at the Coast</h2>
-                <p>LoRa mesh networks (Meshtastic and MeshCore) provide long-range, low-power communications at the coast that can relay messages between nodes without relying on cell towers or satellites, extending coverage beyond line of sight and improving reliability during emergencies or outages. They are inexpensive to deploy, use license-free radio frequencies, and can operate for days on battery power, making them practical for boaters and coastal communities. Come help us to build the Crystal Coast Mesh!</p>
+                <p>Meshtastic and MeshCore enable long-range, low-power mesh communications along the coast, relaying messages between nodes without dependence on cell towers or satellites. They extend coverage beyond line of sight, improve resilience during emergencies, and run on inexpensive devices, license-free frequencies with multi-day battery life.</p>
             </div>
         </div>
     </section>
@@ -370,7 +417,7 @@
         <div class="container">
             <div class="hero-content-extended">
                 <h2>What is Mesh Networking?</h2>
-                <p>Mesh networks create a web of interconnected devices that can communicate directly with each other, without relying on cell towers or internet infrastructure. Perfect for coastal North Carolina, where natural disasters can disrupt traditional communication channels, mesh networks provide a resilient and decentralized way to stay connected.</p>
+                <p>LoRa mesh radios enable off-grid text and data messaging by relaying packets across nearby devices, without cell towers or internet. Ideal for outdoor use and emergency response, these decentralized networks extend coverage beyond line of sight, run on low-power, license-free frequencies, and can be encrypted for privacy. <a href="lora.html">Learn more about LoRa</a>.</p>
             </div>
         </div>
     </section>
@@ -400,7 +447,46 @@
     <section class="hero-content-block">
         <div class="container">
             <div class="hero-content-extended">
-                <img src="./img/meshtasti-relatedc-.png" alt="Meshtastic related graphic" style="margin-bottom: 1rem; max-width: 100%; height: auto; border-radius: 0.5rem;">
+                <h2>Key Applications</h2>
+                <div class="grid-3 key-apps-row" style="margin-top: 0.75rem;">
+                    <div class="card feature-card" data-title="Emergency Response" data-text="Disaster Situations; Search and Rescue Operations">
+                        <i class="fa-solid fa-shield-halved feature-icon" style="color: #0395c8;"></i>
+                        <h3>Emergency Response</h3>
+                        <p>
+                            <ul style="margin:0; padding-left:1.1rem;">
+                                <li><strong>Disaster Situations:</strong> Provides a reliable communication network when existing infrastructure fails, allowing for coordination and safety measures.</li>
+                                <li><strong>Search and Rescue Operations:</strong> Facilitates communication between teams in challenging terrains, enhancing operational efficiency.</li>
+                            </ul>
+                        </p>
+                    </div>
+                    <div class="card feature-card" data-title="Outdoor Activities" data-text="Hiking and Camping; Adventure Sports">
+                        <i class="fa-solid fa-hiking feature-icon" style="color: #0395c8;"></i>
+                        <h3>Outdoor Activities</h3>
+                        <p>
+                            <ul style="margin:0; padding-left:1.1rem;">
+                                <li><strong>Hiking and Camping:</strong> Enables communication among group members in remote areas without cellular service.</li>
+                                <li><strong>Adventure Sports:</strong> Useful for coordinating activities in locations where traditional networks are unavailable.</li>
+                            </ul>
+                        </p>
+                    </div>
+                    <div class="card feature-card" data-title="Community Networks" data-text="Local Mesh Networks; Event Coordination">
+                        <i class="fa-solid fa-people-roof feature-icon" style="color: #0395c8;"></i>
+                        <h3>Community Networks</h3>
+                        <p>
+                            <ul style="margin:0; padding-left:1.1rem;">
+                                <li><strong>Local Mesh Networks:</strong> Communities can establish their own communication systems, promoting collaboration and information sharing.</li>
+                                <li><strong>Event Coordination:</strong> Useful in crowded events where cellular networks may be congested, allowing for effective communication among participants.</li>
+                            </ul>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="hero-content-block">
+        <div class="container">
+            <div class="hero-content-extended">
                 <h2>How to Get Started in the Mesh?</h2>
                 <p>You are ready to join the mesh community! But what steps should you take to get started?</p>
              </div>
@@ -409,39 +495,61 @@
     <section class="features">
         <div class="container" style="display: flex; flex-direction: column; align-items: center;">
             <div class="grid-3">
-                <div class="card feature-card" data-title="Start with Meshtastic" data-text="Meshtastic is the easiest way to get started with off-grid messaging. Grab a $20 device, flash it in your browser, and pair it with your phone." data-link="meshtastic.html" data-link-label="Go to Meshtastic Page">
-                    <i class="fa-solid fa-users feature-icon" style="color: #0395c8;"></i>
-                    <h3>Chatting off grid</h3>
-                    <p>Communicate with others without relying on traditional cell service or internet infrastructure.</p>
-                    <a href="#" class="popup-link" onclick="event.preventDefault();">Click for info</a>
+                <div class="card feature-card" data-title="Which Mesh Platform to Use?" data-text="Meshtastic vs MeshCore overview" data-link="meshtastic-vs-meshcore.html" data-link-label="Meshtastic vs MeshCore">
+                    <i class="fa-solid fa-scale-balanced feature-icon" style="color: #0395c8;"></i>
+                    <h3>Which Mesh Platform to Use?</h3>
+                    <div>
+                        <p><strong>Network Structure</strong></p>
+                        <ul style="margin:0 0 0.5rem 1.1rem;">
+                            <li><strong>Meshtastic:</strong> Utilizes a flood routing method where every device can relay messages. This makes it flexible and resilient, ideal for dynamic environments.</li>
+                            <li><strong>MeshCore:</strong> Employs a structured routing approach with dedicated repeaters. This allows for more efficient message delivery and is better suited for fixed infrastructure.</li>
+                        </ul>
+
+                        <p><strong>Communication Needs</strong></p>
+                        <ul style="margin:0 0 0.5rem 1.1rem;">
+                            <li><strong>Meshtastic:</strong> Best for casual communication where flexibility is key. It is user-friendly and easy to set up, making it suitable for beginners.</li>
+                            <li><strong>MeshCore:</strong> Provides more control over message routing and delivery, making it ideal for situations where reliable communication is critical, such as in military or emergency response scenarios.</li>
+                        </ul>
+
+                        <p><strong>Summary</strong></p>
+                        <p style="margin-bottom:0.25rem;">Choose Meshtastic for casual, off-grid communication needs where ease of use and flexibility are priorities. Opt for MeshCore when you require a robust, structured network capable of handling complex communication needs in urban or tactical type settings.</p>
+                    </div>
+                    <p style="margin-bottom:0.25rem;">
+                        <a href="config-meshtastic.html" class="popup-link text-meshtastic">Meshtastic</a>
+                         |
+                        <a href="config-meshcore.html" class="popup-link text-meshcore">MeshCore</a>
+                    </p>
                 </div>
-                <div class="card feature-card" data-title="Explore MeshCore" data-text="MeshCore is built for network infrastructure with dedicated repeaters and room servers. Great for planned deployments and larger networks." data-link="meshcore.html" data-link-label="Go to MeshCore Page" data-link-color="#3b82f6">
-                    <i class="fa-solid fa-satellite-dish feature-icon" style="color: #0395c8;"></i>
-                    <h3>I want to build a network</h3>
-                    <p>Join our community of builders and contribute to expanding the mesh network.</p>
-                    <a href="#" class="popup-link" onclick="event.preventDefault();">Click for info</a>
+                <div class="card feature-card" data-title="Which devices to purchase for Meshtastic or MeshCore?" data-text="Both Meshtastic and MeshCore can utilize the same hardware. This means that devices designed for Meshtastic can also be configured to work with MeshCore, but not at the same time, providing flexibility in your choice of equipment.
+
+Any of the following devices will work on either platform. For all in one, off the shelf, SenseCAP T1000-E, WisMeshTag, Wio Tracker L1, WisMesh Pocket, Muziworks M1, T-Deck Pro. For base installations, SenseCAP Solar Node P1,  Wismesh Repeater Mini, Heltec Mesh Solar. If DIY is more you style, then RAK, Seeed Studios, Heltec, Lilygo and others have kits that you add the antenna and batteries and small solar panel and enclosure. These can be installed on a building or tower, depending on where you can install one." data-link="meshtastic-vs-meshcore.html" data-link-label="Meshtastic vs MeshCore" data-link-color="#3b82f6">
+                    <i class="fa-solid fa-microchip feature-icon" style="color: #0395c8;"></i>
+                    <h3>Which devices to purchase for Meshtastic or MeshCore?</h3>
+                    <p>Both Meshtastic and MeshCore can utilize the same hardware. This means that devices designed for Meshtastic can also be configured to work with MeshCore, but not at the same time, providing flexibility in your choice of equipment.</p>
+                    <p>Any of the following devices will work on either platform. For all-in-one, off-the-shelf: SenseCAP T1000-E, WisMeshTag, Wio Tracker L1, WisMesh Pocket, Muziworks M1, T-Deck Pro. For base installations: SenseCAP Solar Node P1, Wismesh Repeater Mini, Heltec Mesh Solar. If DIY is more your style, RAK, Seeed Studios, Heltec, Lilygo and others offer kits—add antennas, batteries, a small solar panel and an enclosure for mounting on a building or tower.</p>
+                    <p style="margin-bottom:0.25rem;">
+                        <a href="config-meshtastic.html" class="popup-link text-meshtastic">Meshtastic</a>
+                         |
+                        <a href="config-meshcore.html" class="popup-link text-meshcore">MeshCore</a>
+                    </p>
                 </div>
-                <div class="card feature-card" data-title="Build Your Emergency Kit" data-text="A standalone device like the T-Deck with a good antenna gives you comms when cell and internet are down. No phone needed." data-link="mesh-in-emergency.html" data-link-label="Go to Mesh in Emergency" data-link-color="#d97706">
-                    <i class="fa-solid fa-hand-holding-heart feature-icon" style="color: #0395c8;"></i>
-                    <h3>Prepared for Emergencies</h3>
-                    <p>Mesh communication supports local coordination for storms, outages, and other community needs.</p>
-                    <a href="mesh-in-emergency.html" class="popup-link">Click for info</a>
+                <div class="card feature-card" data-title="Hardware" data-text="After purchase flash firmware and configure your device. Meshtastic: config-meshtastic.html. MeshCore: config-meshcore.html" data-meshtastic-link="config-meshtastic.html" data-meshtastic-label="Meshtastic Config" data-meshcore-link="config-meshcore.html" data-meshcore-label="MeshCore Config">
+                    <i class="fa-solid fa-screwdriver-wrench feature-icon" style="color: #0395c8;"></i>
+                    <h3>Hardware</h3>
+                    <p>After you purchase your hardware, it is time to flash the firmware. If you are using Meshtastic, go to the flasher website and flash the latest beta firmware for your device. If you are using MeshCore, go to the MeshCore flasher website and flash the latest firmware for your device.</p>
+
+                    <p>Once flashed, you will need to configure your device. See the configuration pages linked below for the associated flash and configuration procedures for your device.</p>
+
+                    <p style="margin-bottom:0.25rem;">
+                        <a href="config-meshtastic.html" class="popup-link text-meshtastic">Meshtastic</a>
+                         |
+                        <a href="config-meshcore.html" class="popup-link text-meshcore">MeshCore</a>
+                    </p>
+                    
                 </div>
             </div>
             <div style="height: 1.25rem;"></div>
             <div style="display: flex; justify-content: center; gap: 1.5rem; flex-wrap: wrap; margin: 1.5rem auto 0; max-width: 900px; width: 100%;">
-                <div class="card feature-card" style="flex: 0 1 340px; max-width: 340px;" data-title="Telemetry and Sensors" data-text="If you want to collect telemetry data such as weather stations, motion sensors, GPS position logs, or other sensor data, Meshtastic is the technology for you." data-link="meshtastic.html" data-link-label="Go to Meshtastic Page">
-                    <i class="fa-solid fa-chart-line feature-icon" style="color: #0395c8;"></i>
-                    <h3>Telemetry and Sensors</h3>
-                    <p>If you want to collect telemetry data such as weather stations, motion sensors, GPS position logs, or other sensor data, Meshtastic is the technology for you.</p>
-                    <a href="#" class="popup-link" onclick="event.preventDefault();">Click for info</a>
-                </div>
-                <div class="card feature-card" style="flex: 0 1 340px; max-width: 340px;" data-title="Learn the Basics" data-text="Mesh networking lets devices talk to each other without cell towers or internet. LoRa radios can reach miles on tiny amounts of power." data-link="lora.html" data-link-label="Go to What is LoRa?" data-link-color="#0395c8">
-                    <i class="fa-solid fa-map-location-dot feature-icon" style="color: #0395c8;"></i>
-                    <h3>Just Curious</h3>
-                    <p>Explore the possibilities of mesh networking and how it can benefit your community.</p>
-                    <a href="#" class="popup-link" onclick="event.preventDefault();">Click for info</a>
-                </div>
             </div>
         </div>
     </section>
@@ -451,28 +559,31 @@
             <button class="feature-popup-close" aria-label="Close popup">×</button>
             <h3 id="feature-popup-title"></h3>
             <p id="feature-popup-text"></p>
-            <a id="feature-popup-link" href="meshtastic.html" class="btn btn-primary" style="margin-top: 1rem; display: none;">Go to Meshtastic Page</a>
+            <div id="feature-popup-links" style="margin-top: 1rem; display: none;">
+                <a id="feature-popup-link-meshtastic" href="#" class="btn btn-primary btn-meshtastic" style="margin-right:0.5rem; display:none;"></a>
+                <a id="feature-popup-link-meshcore" href="#" class="btn btn-secondary btn-meshcore" style="display:none;"></a>
+            </div>
         </div>
     </div>
     <section class="hero-buttons-section">
         <div class="container">
             <h2 style="text-align: center; margin-bottom: 1rem;">Deeper Dive</h2>
             <div class="hero-buttons">
-                <a href="lora.html" class="btn btn-secondary" style="background-color: #0395c8 !important; color: #ffffff !important; border-color: #0395c8;">What is "LoRa"?</a>
+                <a href="lora.html" class="btn btn-info">What is "LoRa"?</a>
             </div>
             <div class="hero-buttons">
-                <a href="mesh-in-emergency.html" class="btn btn-secondary" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important; color: #ffffff !important; border-color: #d97706; box-shadow: 0 0 18px rgba(217, 119, 6, 0.25);">Mesh in Emergency</a>
+                <a href="mesh-in-emergency.html" class="btn btn-gradient">Mesh in Emergency</a>
             </div>
             <div class="hero-buttons">
-                <a href="meshtastic-vs-meshcore.html" class="btn btn-secondary" style="background-color: #0f766e !important; color: #ffffff !important; border-color: #0f766e;">Meshtastic vs MeshCore</a>
+                <a href="meshtastic-vs-meshcore.html" class="btn btn-compare">Meshtastic vs MeshCore</a>
             </div>
             <div class="hero-buttons" style="margin-top: 0.75rem;">
-                <a href="meshtastic.html" class="btn btn-primary">Explore Meshtastic</a>
-                <a href="meshcore.html" class="btn btn-secondary" style="background-color: #3b82f6 !important; color: #000000 !important; border-color: #3b82f6;">Explore MeshCore</a>
+                <a href="meshtastic.html" class="btn btn-primary btn-meshtastic">Explore Meshtastic</a>
+                <a href="meshcore.html" class="btn btn-secondary btn-meshcore">Explore MeshCore</a>
             </div>
             <div class="hero-buttons" style="margin-top: 0.75rem;">
-                <a href="config-meshtastic.html" class="btn btn-primary">Configure Meshtastic</a>
-                <a href="config-meshcore.html" class="btn btn-secondary" style="background-color: #3b82f6 !important; color: #000000 !important; border-color: #3b82f6;">Configure MeshCore</a>
+                <a href="config-meshtastic.html" class="btn btn-primary btn-meshtastic">Configure Meshtastic</a>
+                <a href="config-meshcore.html" class="btn btn-secondary btn-meshcore">Configure MeshCore</a>
             </div>
         </div>
     </section>
@@ -484,7 +595,7 @@
                 <h3>Connect via Discord</h3>
                 <p>Chat with local builders, share repeater coordinates, and get real-time node hardware troubleshooting
                     help.</p>
-                <a href="https://discord.gg/AXgrQzhGuX" target="_blank" class="btn btn-primary" style="background-color: #0395c8; border-color: #0395c8; display: block; width: fit-content; margin: 0.5rem auto 0;">Join Our
+                <a href="https://discord.gg/AXgrQzhGuX" target="_blank" rel="noopener noreferrer" class="btn btn-info" style="display: block; width: fit-content; margin: 0.5rem auto 0;">Join Our
                     Discord Server</a>
             </div>
         </div>
