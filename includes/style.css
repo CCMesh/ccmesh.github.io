@@ -103,6 +103,31 @@ a:hover {
     text-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
 }
 
+a:focus-visible,
+button:focus-visible,
+.btn:focus-visible,
+.nav-toggle:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline: 2px solid var(--accent-green);
+    outline-offset: 3px;
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
 /* ==========================================================================
    4. Header Navigation Bar Layout & Logo Branding
    ========================================================================== */
